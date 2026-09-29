@@ -91,3 +91,29 @@ inconsistent.
     manual `readline` (callback-mode) line queue in `play.ts` instead of the promises API. Verified with a
     full scripted 4-player hand piped through stdin (bidding → forced bid → angel → widow/discard →
     all 12 tricks → correct scoring), in addition to normal interactive use.
+
+20. **Server: plain Node + `ws`, not boardgame.io** (the fallback section 2 explicitly allows). The engine
+    already owns every bit of turn/phase logic — whose turn it is, the skip-passed-players bidding order,
+    the forced-bid rule, trick-leader-leads-next — and boardgame.io wants to own that itself via its own
+    turn-order and move-reducer model. Wrapping our already-complete, already-tested engine inside it would
+    mean either fighting its opinions or reimplementing our turn logic a second time in its terms, for a
+    project whose whole framing is "scale is tiny... favor simplicity over infrastructure" (section 1).
+    `packages/server` is a thin, mostly mechanical layer: a `RoomManager` (join codes, seat assignment,
+    delegates every move to the engine's own `applyMove`) plus a `ws` WebSocket adapter that only ever
+    sends each seat its own `viewFor` — the server never serializes a full `GameState` to any client.
+
+21. **Wire protocol adds `legalMoves` to every state broadcast** (`packages/server/src/protocol.ts`), on
+    top of what the engine's `PlayerView` provides. The client has no way to compute this itself — it only
+    ever holds a redacted view, never the true `GameState` `legalMoves()` needs — so the server computes it
+    server-side per seat and ships it alongside `view`. One exception: during the `discard` phase this is
+    always sent as `[]`, since `legalMoves()` there enumerates every valid card combination (thousands of
+    them, per decision #14) — fine as a pure-engine API, but not something to put on the wire. A discard UI
+    is built from `view.hand` and `view.config.widowSize` directly; the server still authoritatively
+    validates whatever discard move actually arrives.
+
+22. **Phase 3's reconnect is in-memory only, scoped to decision #20's "thin layer" framing.** A `token`
+    issued on join lets a dropped/refreshed connection re-attach to its seat without losing it or consuming
+    a new one, which is enough for "two clients can complete a full hand" through ordinary network blips.
+    Surviving an actual *server restart* (rooms and their `GameState` are process-memory only right now)
+    is explicitly Phase 5's job ("Persist state so a server restart... can reconnect mid-hand") — building
+    it now would be scope creep ahead of the client that's supposed to exercise it.
