@@ -1,5 +1,11 @@
 import type { Move, PlayerView, Seat } from '@napoleon/engine';
 
+/**
+ * The wire protocol between client and server. Isomorphic (no Node or DOM
+ * APIs) so both @napoleon/server and @napoleon/client can depend on it
+ * without pulling in the other's runtime (Node sockets vs. the browser).
+ */
+
 export type ClientMessage =
   | { type: 'createRoom'; players: 4 | 5; name: string }
   | { type: 'joinRoom'; code: string; name: string }
@@ -10,7 +16,8 @@ export type ClientMessage =
  * `legalMoves` is the receiving seat's own legal moves for the current
  * phase/turn (empty when it isn't their turn) — the client has no other
  * way to know what's legal, since `view` deliberately excludes the rest
- * of the true GameState.
+ * of the true GameState. Always `[]` during the 'discard' phase — see
+ * DECISIONS.md #21.
  */
 export type ServerMessage =
   | { type: 'joined'; code: string; seat: Seat; token: string; players: number }
@@ -48,6 +55,38 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       if (typeof obj.move !== 'object' || obj.move === null) return null;
       // Structural/semantic legality of the move itself is enforced by applyMove.
       return { type: 'move', move: obj.move as Move };
+    default:
+      return null;
+  }
+}
+
+export function parseServerMessage(raw: string): ServerMessage | null {
+  let msg: unknown;
+  try {
+    msg = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof msg !== 'object' || msg === null || !('type' in msg)) return null;
+  const obj = msg as Record<string, unknown>;
+
+  switch (obj.type) {
+    case 'joined':
+      if (
+        typeof obj.code !== 'string' ||
+        typeof obj.seat !== 'number' ||
+        typeof obj.token !== 'string' ||
+        typeof obj.players !== 'number'
+      ) {
+        return null;
+      }
+      return { type: 'joined', code: obj.code, seat: obj.seat, token: obj.token, players: obj.players };
+    case 'state':
+      if (typeof obj.view !== 'object' || obj.view === null || !Array.isArray(obj.legalMoves)) return null;
+      return { type: 'state', view: obj.view as PlayerView, legalMoves: obj.legalMoves as Move[] };
+    case 'error':
+      if (typeof obj.message !== 'string') return null;
+      return { type: 'error', message: obj.message };
     default:
       return null;
   }

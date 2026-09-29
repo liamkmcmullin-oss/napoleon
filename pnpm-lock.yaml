@@ -207,11 +207,24 @@ importers:
         specifier: ^2.1.4
         version: 2.1.9(@types/node@22.20.4)(supports-color@7.2.0)
 
+  packages/protocol:
+    dependencies:
+      '@napoleon/engine':
+        specifier: workspace:*
+        version: link:../engine
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   packages/server:
     dependencies:
       '@napoleon/engine':
         specifier: workspace:*
         version: link:../engine
+      '@napoleon/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       ws:
         specifier: ^8.18.0
         version: 8.22.0

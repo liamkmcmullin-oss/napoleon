@@ -2,8 +2,8 @@ import { createServer, type Server as HttpServer } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { legalMoves, viewFor } from '@napoleon/engine';
 import type { Seat } from '@napoleon/engine';
-import { parseClientMessage } from './protocol.js';
-import type { ServerMessage } from './protocol.js';
+import { parseClientMessage } from '@napoleon/protocol';
+import type { ServerMessage } from '@napoleon/protocol';
 import { RoomManager } from './rooms.js';
 
 interface Session {

@@ -3,7 +3,7 @@ import { WebSocket } from 'ws';
 import type { CardId, Move, PlayerView } from '@napoleon/engine';
 import { startServer } from '../src/server.js';
 import type { NapoleonServer } from '../src/server.js';
-import type { ServerMessage } from '../src/protocol.js';
+import type { ServerMessage } from '@napoleon/protocol';
 
 let server: NapoleonServer | null = null;
 

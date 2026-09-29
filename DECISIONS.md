@@ -102,7 +102,7 @@ inconsistent.
     delegates every move to the engine's own `applyMove`) plus a `ws` WebSocket adapter that only ever
     sends each seat its own `viewFor` — the server never serializes a full `GameState` to any client.
 
-21. **Wire protocol adds `legalMoves` to every state broadcast** (`packages/server/src/protocol.ts`), on
+21. **Wire protocol adds `legalMoves` to every state broadcast** (`packages/protocol`), on
     top of what the engine's `PlayerView` provides. The client has no way to compute this itself — it only
     ever holds a redacted view, never the true `GameState` `legalMoves()` needs — so the server computes it
     server-side per seat and ships it alongside `view`. One exception: during the `discard` phase this is
@@ -117,3 +117,12 @@ inconsistent.
     Surviving an actual *server restart* (rooms and their `GameState` are process-memory only right now)
     is explicitly Phase 5's job ("Persist state so a server restart... can reconnect mid-hand") — building
     it now would be scope creep ahead of the client that's supposed to exercise it.
+
+23. **Extracted the wire protocol into `packages/protocol`,** ahead of Phase 4. It was originally inline
+    in `packages/server`, which is fine as long as nothing outside the server imports it — but the client
+    needs the same `ClientMessage`/`ServerMessage` types, and `@napoleon/server`'s package entry point
+    (`src/index.ts`) pulls in `ws` and `node:http`, neither of which belongs in a browser bundle. Moved
+    the (isomorphic — just `JSON.parse`, no Node/DOM APIs) protocol module to its own workspace package so
+    both `@napoleon/server` and `@napoleon/client` can depend on it without either pulling in the other's
+    runtime. Also added `parseServerMessage`, mirroring `parseClientMessage`, so the client never has to
+    trust an unvalidated `as ServerMessage` cast on incoming socket data.
