@@ -1,0 +1,21 @@
+{
+  "name": "@napoleon/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "play": "tsx src/play.ts",
+    "simulate": "tsx src/simulate.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "echo \"(no unit tests in cli; see simulate.ts)\""
+  },
+  "dependencies": {
+    "@napoleon/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "@types/node": "^22.9.0"
+  }
+}

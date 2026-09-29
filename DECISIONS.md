@@ -75,3 +75,19 @@ inconsistent.
     with a documented fallback to a plain Node + WebSockets server if boardgame.io fights the engine's
     hidden-information model. Not yet evaluated — engine (Phases 0–1) and CLI/bots (Phase 2) don't depend
     on this choice, so it's deferred until Phase 3 starts.
+
+18. **Added `packages/cli`, not listed in section 2's layout.** Phase 2 asks for "a text-mode hot-seat
+    game and a bot that plays a random legal move," which needs I/O (readline, process.stdout) the engine
+    package deliberately excludes ("zero runtime dependencies, no I/O"). Rather than bolt scripts onto the
+    engine, added a small `@napoleon/cli` workspace package depending on `@napoleon/engine`, with
+    `play.ts` (interactive hot-seat) and `simulate.ts` (bulk bot-vs-bot runner for the 10,000-hand
+    acceptance check). `packages/server` and `packages/client` from the spec's layout are still to come
+    in Phases 3–4.
+
+19. **`node:readline/promises`'s `question()` can hang on non-TTY stdin.** While building `play.ts`,
+    found that a second sequential `rl.question()` call can hang indefinitely when stdin is a redirected
+    file/pipe that has already reached EOF — a real Node behavior, not specific to this codebase, but one
+    that would also bite anyone scripting/testing the CLI non-interactively. Worked around it with a
+    manual `readline` (callback-mode) line queue in `play.ts` instead of the promises API. Verified with a
+    full scripted 4-player hand piped through stdin (bidding → forced bid → angel → widow/discard →
+    all 12 tricks → correct scoring), in addition to normal interactive use.
