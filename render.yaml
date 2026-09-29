@@ -1,0 +1,15 @@
+# Render "Blueprint": https://render.com/docs/blueprint-spec
+# One web service running the whole monorepo — see DECISIONS.md #30.
+# To use: push this repo to GitHub, then on Render, "New +" > "Blueprint"
+# and point it at the repo. Render reads this file automatically.
+services:
+  - type: web
+    name: napoleon
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm -r build
+    startCommand: node packages/server/dist/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: 22

@@ -5,7 +5,14 @@ import type { ServerMessage } from '@napoleon/protocol';
 import type { Move, PlayerView } from '@napoleon/engine';
 
 const STORAGE_KEY = 'napoleon:session';
-const WS_URL = (import.meta.env.VITE_WS_URL as string | undefined) ?? `ws://${window.location.hostname}:8080`;
+// In production the server serves this app itself (see
+// packages/server/src/static.ts), so the WebSocket is same-origin — just
+// swap the page's own protocol/host. VITE_WS_URL overrides this, which is
+// what local dev needs (client and server run as separate processes on
+// different ports there) — see packages/client/.env.development.
+const WS_URL =
+  (import.meta.env.VITE_WS_URL as string | undefined) ??
+  `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
 const RECONNECT_DELAYS_MS = [500, 1000, 2000, 4000, 8000];
 
 interface SavedSession {

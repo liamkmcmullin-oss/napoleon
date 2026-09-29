@@ -184,3 +184,27 @@ inconsistent.
     case: when Napoleon slurps or holds the angel, `seat === angelSeat` is true for Napoleon's own view
     regardless, since Napoleon *is* the angel holder there. Updated section 3.5/6 of the spec and the
     now-stale `view.test.ts` assertion this superseded.
+
+30. **Deployment: one service, not two.** `packages/server` now serves `packages/client`'s built static
+    files itself (`static.ts`, wired into the same `http.Server` the WebSocket upgrade already uses),
+    rather than deploying the client and server as separate hosted things. For "one host, a handful of
+    tables" (section 1), running and paying for two services — plus wiring CORS/cross-origin WebSocket
+    config between them — is pure overhead with no benefit. One consequence: the client can no longer
+    assume the server is at a fixed `localhost:8080`; `GameContext.tsx`'s `WS_URL` now defaults to
+    same-origin (swap the page's own protocol for `ws`/`wss`, keep its host) and only falls back to an
+    explicit port for local dev, via `packages/client/.env.development` (loaded automatically by Vite in
+    dev, absent from production builds).
+
+31. **Server build: esbuild-bundled, not `tsc`-compiled.** `@napoleon/engine` and `@napoleon/protocol`
+    are consumed as raw TypeScript source everywhere (their `package.json` `main` points at `src/index.ts`
+    directly — fine for `tsx`, Vite, and Vitest, all of which transform TS on the fly, but plain `node`
+    can't execute `.ts` files). Rather than give every workspace package its own proper `dist` build with
+    correct `exports`, `packages/server`'s `build` script uses `esbuild --bundle` to inline those
+    packages' source directly into one `dist/index.js`, with only `ws` and Node builtins left as real
+    runtime dependencies (`--external:ws`). Simpler than a multi-package build graph for a monorepo this
+    size, and the output runs with plain `node dist/index.js` — no `tsx` needed in production.
+
+32. **Docker image is single-stage and copies the whole built repo.** `Dockerfile` doesn't bother with a
+    multi-stage build to trim the final image (copying only `dist/` + production `node_modules` out of a
+    build stage) — again, "tiny scale... favor simplicity" (section 1). The image is larger than it needs
+    to be; that's an acceptable trade for a Dockerfile anyone can read in ten seconds.

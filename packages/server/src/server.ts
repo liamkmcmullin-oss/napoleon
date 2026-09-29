@@ -1,10 +1,13 @@
+import { existsSync } from 'node:fs';
 import { createServer, type Server as HttpServer } from 'node:http';
+import { resolve } from 'node:path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { legalMoves, viewFor } from '@napoleon/engine';
 import type { Seat } from '@napoleon/engine';
 import { parseClientMessage } from '@napoleon/protocol';
 import type { ServerMessage } from '@napoleon/protocol';
 import { RoomManager } from './rooms.js';
+import { createStaticHandler } from './static.js';
 
 interface Session {
   code: string;
@@ -22,9 +25,24 @@ function send(ws: WebSocket, msg: ServerMessage): void {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
 }
 
+function resolveClientDist(): string | null {
+  const override = process.env.CLIENT_DIST_PATH;
+  if (override) return override;
+  // Works whether this file is running as TS from src/ (dev, via tsx) or
+  // as the esbuild-bundled dist/index.js (production) — both sit two
+  // directories above packages/, so packages/client/dist is always "up
+  // two, over to client/dist" from here.
+  const candidate = resolve(import.meta.dirname, '../../client/dist');
+  return existsSync(candidate) ? candidate : null;
+}
+
 export function startServer(port: number): NapoleonServer {
   const manager = new RoomManager();
-  const httpServer = createServer();
+  const clientDist = resolveClientDist();
+  const httpServer = createServer(clientDist ? createStaticHandler(clientDist) : undefined);
+  if (clientDist) {
+    console.log(`Serving client build from ${clientDist}`);
+  }
   const wss = new WebSocketServer({ server: httpServer });
 
   const sessionOf = new WeakMap<WebSocket, Session>();
