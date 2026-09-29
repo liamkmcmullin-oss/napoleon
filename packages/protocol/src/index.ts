@@ -18,10 +18,16 @@ export type ClientMessage =
  * way to know what's legal, since `view` deliberately excludes the rest
  * of the true GameState. Always `[]` during the 'discard' phase — see
  * DECISIONS.md #21.
+ *
+ * `names` (indexed by seat) is included on both `roster` and `state`
+ * because it's not part of PlayerView — the engine has no concept of a
+ * player's display name, only seat numbers — but the lobby and
+ * scoreboard both need it. `null` means that seat hasn't joined yet.
  */
 export type ServerMessage =
   | { type: 'joined'; code: string; seat: Seat; token: string; players: number }
-  | { type: 'state'; view: PlayerView; legalMoves: Move[] }
+  | { type: 'roster'; code: string; players: number; names: (string | null)[] }
+  | { type: 'state'; view: PlayerView; legalMoves: Move[]; names: (string | null)[] }
   | { type: 'error'; message: string };
 
 function sanitizeName(raw: unknown): string {
@@ -81,9 +87,26 @@ export function parseServerMessage(raw: string): ServerMessage | null {
         return null;
       }
       return { type: 'joined', code: obj.code, seat: obj.seat, token: obj.token, players: obj.players };
+    case 'roster':
+      if (typeof obj.code !== 'string' || typeof obj.players !== 'number' || !Array.isArray(obj.names)) {
+        return null;
+      }
+      return { type: 'roster', code: obj.code, players: obj.players, names: obj.names as (string | null)[] };
     case 'state':
-      if (typeof obj.view !== 'object' || obj.view === null || !Array.isArray(obj.legalMoves)) return null;
-      return { type: 'state', view: obj.view as PlayerView, legalMoves: obj.legalMoves as Move[] };
+      if (
+        typeof obj.view !== 'object' ||
+        obj.view === null ||
+        !Array.isArray(obj.legalMoves) ||
+        !Array.isArray(obj.names)
+      ) {
+        return null;
+      }
+      return {
+        type: 'state',
+        view: obj.view as PlayerView,
+        legalMoves: obj.legalMoves as Move[],
+        names: obj.names as (string | null)[],
+      };
     case 'error':
       if (typeof obj.message !== 'string') return null;
       return { type: 'error', message: obj.message };

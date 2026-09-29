@@ -51,13 +51,26 @@ export function startServer(port: number): NapoleonServer {
     // `view.config.widowSize` directly, and the server still validates the
     // actual discard move authoritatively when it arrives.
     const moves = room.state.phase === 'discard' ? [] : legalMoves(room.state, seat);
-    send(ws, { type: 'state', view: viewFor(room.state, seat), legalMoves: moves });
+    const names = room.seats.map((s) => s.name);
+    send(ws, { type: 'state', view: viewFor(room.state, seat), legalMoves: moves, names });
   }
 
   function broadcastState(code: string): void {
     const seatMap = socketsByRoom.get(code);
     if (!seatMap) return;
     for (const [seat, ws] of seatMap) sendState(ws, code, seat);
+  }
+
+  function sendRoster(ws: WebSocket, code: string): void {
+    const room = manager.getRoom(code);
+    if (!room) return;
+    send(ws, { type: 'roster', code, players: room.players, names: room.seats.map((s) => s.name) });
+  }
+
+  function broadcastRoster(code: string): void {
+    const seatMap = socketsByRoom.get(code);
+    if (!seatMap) return;
+    for (const ws of seatMap.values()) sendRoster(ws, code);
   }
 
   wss.on('connection', (ws) => {
@@ -73,6 +86,7 @@ export function startServer(port: number): NapoleonServer {
           const { room, seat, token } = manager.createRoom(msg.players, msg.name);
           attach(ws, room.code, seat);
           send(ws, { type: 'joined', code: room.code, seat, token, players: room.players });
+          sendRoster(ws, room.code);
           break;
         }
         case 'joinRoom': {
@@ -83,7 +97,8 @@ export function startServer(port: number): NapoleonServer {
           }
           attach(ws, res.room.code, res.seat);
           send(ws, { type: 'joined', code: res.room.code, seat: res.seat, token: res.token, players: res.room.players });
-          broadcastState(res.room.code);
+          broadcastRoster(res.room.code);
+          broadcastState(res.room.code); // no-ops until the room is full and the hand exists
           break;
         }
         case 'reconnect': {
@@ -94,6 +109,7 @@ export function startServer(port: number): NapoleonServer {
           }
           attach(ws, msg.code, msg.seat);
           send(ws, { type: 'joined', code: msg.code, seat: msg.seat, token: msg.token, players: res.room.players });
+          sendRoster(ws, msg.code);
           sendState(ws, msg.code, msg.seat);
           break;
         }

@@ -108,6 +108,15 @@ describe('server integration', () => {
     await Promise.all(clients.map((c) => c.waitFor(() => c.seat !== null)));
     await Promise.all(clients.map((c) => c.waitFor(() => c.latestView !== null)));
 
+    // Names aren't part of PlayerView (the engine has no concept of a
+    // display name) — the server attaches them separately on `state`.
+    for (const client of clients) {
+      const stateMsg = [...client.messages].reverse().find((m) => m.type === 'state');
+      expect(stateMsg && stateMsg.type === 'state' ? stateMsg.names : null).toEqual(['Alice', 'Bob', 'Cara', 'Dee']);
+    }
+    const rosterMsg = clients[0]!.messages.find((m) => m.type === 'roster');
+    expect(rosterMsg).toBeDefined();
+
     // Play randomly-selected legal moves, driven entirely by what each
     // client received over the wire, until the hand is over.
     let guard = 0;
