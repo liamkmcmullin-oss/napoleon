@@ -172,3 +172,15 @@ inconsistent.
     was fixed, the remaining seven components split cleanly into three independent groups with no
     shared files (bidding; angel/discard/hand-result; scoreboard/rules) and were built in parallel by
     subagents against that fixed contract, then reviewed and integrated by hand.
+
+29. **Rule change: Napoleon no longer learns the angel's seat just by naming it.** Originally (per the
+    spec's own section 6, quoting: "Napoleon and the angel holder each know their own role"), `viewFor`
+    revealed `angelSeat` to Napoleon from the moment `nameAngel` resolved it, even though the angel's
+    *holder* wouldn't play the card — or find out they'd been named — for many tricks. Per an explicit
+    rule change, Napoleon is now kept in the dark exactly like every other defender: `angelSeat` is
+    hidden until `angelRevealed` (the card is actually played), with the one unavoidable exception of
+    the angel holder themselves, who can always tell from their own hand (`viewFor`'s
+    `knowsAngelSeat = angelRevealed || seat === angelSeat`). This still correctly covers the own-angel
+    case: when Napoleon slurps or holds the angel, `seat === angelSeat` is true for Napoleon's own view
+    regardless, since Napoleon *is* the angel holder there. Updated section 3.5/6 of the spec and the
+    now-stale `view.test.ts` assertion this superseded.

@@ -256,26 +256,109 @@ button {
   opacity: 0.4;
 }
 
-/* Table */
+.card--playable {
+  box-shadow:
+    0 0 0 3px var(--color-accent),
+    0 6px 14px rgba(0, 0, 0, 0.45);
+}
 
-.table-felt {
-  background: radial-gradient(circle at 50% 35%, #16603a, var(--color-bg));
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  min-height: 180px;
+/* Table: an oval felt with opponents seated around it (clockwise from the
+   viewer's left, matching turn order) and the current trick in the middle.
+   The viewer's own hand is NOT part of this — see .own-hand below. */
+
+.table {
+  position: relative;
+  background: radial-gradient(ellipse at 50% 42%, #1c6b40, var(--color-bg) 78%);
+  border: 5px solid #5c3a1e;
+  border-radius: 50% / 30%;
+  min-height: 260px;
+  padding: var(--space-6) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-seat {
+  position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
+  gap: var(--space-1);
+  width: 110px;
+}
+
+.table-seat--top {
+  top: var(--space-2);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.table-seat--left {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.table-seat--right {
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.table-seat--top-left {
+  top: 12%;
+  left: 4%;
+}
+
+.table-seat--top-right {
+  top: 12%;
+  right: 4%;
+}
+
+.card-fan {
+  position: relative;
+  width: 100%;
+  height: 46px;
+}
+
+.card-fan .card--back {
+  width: 30px;
+  height: 42px;
+}
+
+.table-seat__name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-on-dark);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.table-seat__dealer {
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.table-seat__count {
+  font-size: 0.7rem;
+  color: rgba(245, 245, 240, 0.7);
+}
+
+.table-seat--turn .table-seat__name {
+  background: var(--color-accent);
+  color: #201a05;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.35);
 }
 
 .trick-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
   gap: var(--space-2);
-  width: 100%;
-  max-width: 420px;
 }
 
 .trick-slot {
@@ -283,8 +366,19 @@ button {
   flex-direction: column;
   align-items: center;
   gap: var(--space-1);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: rgba(245, 245, 240, 0.8);
+}
+
+/* The viewer's own hand, fanned like cards actually held. Card positions
+   are computed per-render in Hand.tsx (spread/rotation depend on hand
+   size), this just sets up the container each card is absolutely
+   positioned within. */
+
+.own-hand {
+  position: relative;
+  height: 118px;
+  margin-top: var(--space-2);
 }
 
 @media (min-width: 640px) {

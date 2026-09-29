@@ -262,7 +262,7 @@ For each seat, the view **must not reveal**:
 - Other players' hands (show only their card counts).
 - The widow contents before Napoleon takes it.
 - Napoleon's discards (show only the count) until the hand is over.
-- `angelSeat`, until `angelRevealed` is true. Napoleon and the angel holder each know their own role.
+- `angelSeat`, until `angelRevealed` is true. The one exception is the angel holder, who unavoidably knows their own role just by looking at their own hand — this includes Napoleon in the slurp/own-hand case, where Napoleon *is* the angel. But when the angel is a different player, Napoleon does **not** get early notice of who it is; Napoleon finds out at the same moment everyone else does, when the card is actually played.
 
 The view **must show**:
 - All bids and passes, the current bid, Napoleon, and trump once known.

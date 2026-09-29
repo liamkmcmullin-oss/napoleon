@@ -1,8 +1,11 @@
 import type { GameState, PlayerView, Seat } from './types.js';
 
 export function viewFor(state: GameState, seat: Seat): PlayerView {
-  const knowsAngelSeat =
-    state.angelRevealed || seat === state.napoleon || seat === state.angelSeat;
+  // Napoleon does NOT learn the angel's seat just by naming the card —
+  // only the angel holder knows their own role (unavoidably: they can see
+  // the named card sitting in their own hand), same as everyone else,
+  // until it's actually played. See DECISIONS.md #29.
+  const knowsAngelSeat = state.angelRevealed || seat === state.angelSeat;
 
   return {
     seat,

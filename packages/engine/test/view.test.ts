@@ -58,7 +58,7 @@ describe('viewFor hidden information (section 6)', () => {
     }
   });
 
-  it('angelSeat is hidden from everyone except napoleon and the angel holder, until revealed', () => {
+  it('angelSeat is hidden from everyone, including napoleon, until revealed', () => {
     let state = createHand(config, 5, 0);
     state = unwrap(applyMove(state, 1, { type: 'bid', bid: { count: 12, trump: 'C' } }));
     state = unwrap(applyMove(state, 2, { type: 'pass' }));
@@ -72,9 +72,12 @@ describe('viewFor hidden information (section 6)', () => {
 
     for (let seat = 0; seat < 4; seat++) {
       const view = viewFor(state, seat);
-      if (seat === napoleon || seat === otherSeat) {
+      if (seat === otherSeat) {
+        // Only the angel holder knows their own role — unavoidably, since
+        // they can see the named card sitting in their own hand.
         expect(view.angelSeat).toBe(otherSeat);
       } else {
+        // Napoleon does NOT learn it just by naming the card.
         expect(view.angelSeat).toBeNull();
       }
       // But the named card itself is always public.
