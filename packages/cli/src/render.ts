@@ -50,7 +50,9 @@ export function formatMove(move: Move): string {
     case 'discard':
       return `Discard ${sortForDisplay(move.cards).map(formatCard).join(' ')}`;
     case 'play':
-      return `Play ${formatCard(move.card)}`;
+      return move.calledSuit
+        ? `Play ${formatCard(move.card)}, calling ${SUIT_SYMBOL[move.calledSuit] ?? move.calledSuit}`
+        : `Play ${formatCard(move.card)}`;
     case 'nextHand':
       return 'Continue to next hand';
   }
@@ -73,7 +75,17 @@ export function printTable(view: PlayerView): void {
   lines.push(`Hand counts: ${view.handCounts.map((c, i) => `seat${i}:${c}`).join('  ')}`);
   if (view.widowCount > 0) lines.push(`Widow: ${view.widowCount} card(s) face down`);
   if (view.trick.length > 0) {
-    lines.push(`Trick ${view.trickNumber}: ` + view.trick.map((p) => `seat${p.seat}=${formatCard(p.card)}`).join('  '));
+    lines.push(
+      `Trick ${view.trickNumber}: ` +
+        view.trick
+          .map(
+            (p) =>
+              `seat${p.seat}=${formatCard(p.card)}${
+                p.calledSuit ? ` (calls ${SUIT_SYMBOL[p.calledSuit] ?? p.calledSuit})` : ''
+              }`,
+          )
+          .join('  '),
+    );
   }
   lines.push(`Scores: ${view.scores.map((s, i) => `seat${i}:${s}`).join('  ')}`);
   lines.push(`Your hand: ${formatHand(view.hand)}`);

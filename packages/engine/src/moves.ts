@@ -1,11 +1,11 @@
-import { makeDeck } from './cards.js';
+import { JOKER, SUITS, makeDeck } from './cards.js';
 import { allValidBids, isMaximalBid, isValidBid, outranks } from './bidding.js';
 import { createHand } from './deal.js';
 import { legalPlays } from './legalPlays.js';
 import { deriveSeed } from './rng.js';
 import { resolveTrick } from './resolveTrick.js';
 import { scoreHand } from './score.js';
-import type { ApplyResult, Bid, CardId, GameState, Move, Seat } from './types.js';
+import type { ApplyResult, Bid, CardId, GameState, Move, Seat, Suit, TrickPlay } from './types.js';
 
 function err(error: string): ApplyResult {
   return { ok: false, error };
@@ -70,7 +70,13 @@ export function legalMoves(state: GameState, seat: Seat): Move[] {
       const hand = state.hands[seat] ?? [];
       const firstTrick = state.trickNumber === 1;
       const cards = legalPlays(hand, state.trick, { trump: state.trump!, firstTrick, config: state.config });
-      return cards.map((card) => ({ type: 'play', card }));
+      const leadingJokerInNT = state.trick.length === 0 && state.trump === 'NT';
+      return cards.flatMap((card): Move[] => {
+        if (card === JOKER && leadingJokerInNT) {
+          return SUITS.map((calledSuit) => ({ type: 'play', card, calledSuit }));
+        }
+        return [{ type: 'play', card }];
+      });
     }
     case 'handOver':
       return [{ type: 'nextHand' }];
@@ -88,7 +94,7 @@ export function applyMove(state: GameState, seat: Seat, move: Move): ApplyResult
     case 'discard':
       return applyDiscard(state, seat, move.cards);
     case 'play':
-      return applyPlay(state, seat, move.card);
+      return applyPlay(state, seat, move.card, move.calledSuit);
     case 'nextHand':
       return applyNextHand(state, seat);
   }
@@ -201,7 +207,7 @@ function applyDiscard(state: GameState, seat: Seat, cards: CardId[]): ApplyResul
   });
 }
 
-function applyPlay(state: GameState, seat: Seat, card: CardId): ApplyResult {
+function applyPlay(state: GameState, seat: Seat, card: CardId, calledSuit?: Suit): ApplyResult {
   if (state.phase !== 'play') return err(`cannot play during phase ${state.phase}`);
   if (state.turn !== seat) return err('not your turn');
 
@@ -212,9 +218,19 @@ function applyPlay(state: GameState, seat: Seat, card: CardId): ApplyResult {
   const legal = legalPlays(hand, state.trick, { trump: state.trump!, firstTrick, config: state.config });
   if (!legal.includes(card)) return err(`${card} is not a legal play`);
 
+  const leadingJokerInNT = card === JOKER && state.trick.length === 0 && state.trump === 'NT';
+  if (leadingJokerInNT) {
+    if (calledSuit === undefined || !SUITS.includes(calledSuit)) {
+      return err('must call a suit when leading the Joker in a No Trump hand');
+    }
+  } else if (calledSuit !== undefined) {
+    return err('calledSuit is only valid when leading the Joker in a No Trump hand');
+  }
+
   const newHand = hand.filter((c) => c !== card);
   const newHands = state.hands.map((h, i) => (i === seat ? newHand : h));
-  const newTrick = [...state.trick, { seat, card }];
+  const playEntry: TrickPlay = leadingJokerInNT ? { seat, card, calledSuit: calledSuit! } : { seat, card };
+  const newTrick = [...state.trick, playEntry];
   const angelRevealed = state.angelRevealed || card === state.angelCard;
 
   if (newTrick.length < state.players) {

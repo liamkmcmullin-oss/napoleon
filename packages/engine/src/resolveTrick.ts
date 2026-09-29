@@ -1,5 +1,4 @@
 import { cardRank, cardSuit, isJoker, rankValue } from './cards.js';
-import { requiredSuit } from './legalPlays.js';
 import { effectiveSuit, isTrump, trumpRank } from './trump.js';
 import type { Seat, Trump, TrickPlay } from './types.js';
 
@@ -41,8 +40,10 @@ export function resolveTrick(trick: TrickPlay[], ctx: ResolveCtx): Seat {
 
   const led = trick[0]!.card;
 
-  // Rule 2: Joker led (non-NT) wins outright.
-  if (isJoker(led) && trump !== 'NT') {
+  // Rule 2: Joker led wins outright, including in a No Trump hand. The
+  // leader also calls the suit the rest of the trick must follow — see
+  // requiredSuit() in legalPlays.ts.
+  if (isJoker(led)) {
     return trick[0]!.seat;
   }
 
@@ -68,7 +69,8 @@ export function resolveTrick(trick: TrickPlay[], ctx: ResolveCtx): Seat {
   }
 
   // Rule 5: highest card of the led suit (R, from the Following rules).
-  const required = isJoker(led) ? requiredSuit(trick, trump, firstTrick) : effectiveSuit(led, trump, firstTrick);
+  // led is never the Joker here — Rule 2 already returned in that case.
+  const required = effectiveSuit(led, trump, firstTrick);
   const candidates = trick.filter((p) => !isJoker(p.card) && effectiveSuit(p.card, trump, firstTrick) === required);
   let best = candidates[0]!;
   for (const play of candidates.slice(1)) {

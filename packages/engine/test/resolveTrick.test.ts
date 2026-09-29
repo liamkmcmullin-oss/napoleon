@@ -52,13 +52,28 @@ describe('resolveTrick (spec section 8)', () => {
     expect(resolveTrick(t, { trump: 'H', firstTrick: true })).toBe(1);
   });
 
-  it('10. NT hand, Joker led: effective suit set by next card, Joker and off-suit Ace lose', () => {
-    const t = trick([[0, 'JOKER'], [1, '6D'], [2, 'KD'], [3, 'AH']]);
-    expect(resolveTrick(t, { trump: 'NT', firstTrick: false })).toBe(2);
+  it('10. NT hand, Joker led: the Joker wins outright, having called the suit', () => {
+    const t: TrickPlay[] = [
+      { seat: 0, card: 'JOKER', calledSuit: 'D' },
+      { seat: 1, card: '6D' },
+      { seat: 2, card: 'KD' },
+      { seat: 3, card: 'AH' },
+    ];
+    expect(resolveTrick(t, { trump: 'NT', firstTrick: false })).toBe(0);
   });
 
   it('11. Spades trump: AS wins whenever played, trump or not', () => {
     const t = trick([[0, '4S'], [1, 'AS'], [2, '2S'], [3, '9S']]);
     expect(resolveTrick(t, { trump: 'S', firstTrick: false })).toBe(1);
+  });
+
+  it('12. NT hand, Joker led: still loses to the Ace of Spades', () => {
+    const t: TrickPlay[] = [
+      { seat: 0, card: 'JOKER', calledSuit: 'D' },
+      { seat: 1, card: '6D' },
+      { seat: 2, card: 'AS' },
+      { seat: 3, card: 'KD' },
+    ];
+    expect(resolveTrick(t, { trump: 'NT', firstTrick: false })).toBe(2);
   });
 });

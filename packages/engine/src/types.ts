@@ -15,7 +15,7 @@ export type Move =
   | { type: 'pass' }
   | { type: 'nameAngel'; card: CardId }
   | { type: 'discard'; cards: CardId[] }
-  | { type: 'play'; card: CardId }
+  | { type: 'play'; card: CardId; calledSuit?: Suit }
   | { type: 'nextHand' };
 
 export type Phase = 'bidding' | 'angel' | 'discard' | 'play' | 'handOver';
@@ -46,6 +46,8 @@ export interface Config {
 export interface TrickPlay {
   seat: Seat;
   card: CardId;
+  /** Set only on the leading play when the Joker is led in a No Trump hand — see requiredSuit(). */
+  calledSuit?: Suit;
 }
 
 export interface BidRecord {

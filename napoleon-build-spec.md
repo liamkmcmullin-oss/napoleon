@@ -109,7 +109,7 @@ Napoleon's side is Napoleon plus the angel. If Napoleon is their own angel, Napo
 - Can be played at any time by any player, including as a discard when a player could follow suit. **It cannot be led on the first trick.**
 - If **not led**, it has no effect and cannot win the trick.
 - If **led in a trump hand**, all other players must play a trump card if able, and a player with no trump may play any card. The Joker wins the trick unless the Ace of Spades is played.
-- If **led in a No Trump hand**, the Joker is useless. It cannot win the trick. The **suit of the next card played becomes the effective led suit** for everyone who follows. The player after the Joker is free to play any card.
+- If **led in a No Trump hand**, the leader **calls a suit** at the moment they lead it. Everyone else must follow that called suit if able, exactly as if it had been led (a player with none may play any card). The Joker wins the trick unless the Ace of Spades is played.
 - It is not a point card.
 
 **3 of Spades:**
@@ -132,7 +132,7 @@ Define these terms:
 2. The player may **always** play the Joker (unless rule 1 already forced it).
 3. Otherwise the required suit `R` is:
    - Led card is the Joker, trump hand: `R = TRUMP`.
-   - Led card is the Joker, NT hand: if no other card has been played yet, `R` is none (any card is legal). Otherwise `R = effectiveSuit` of the first card played after the Joker.
+   - Led card is the Joker, NT hand: `R` is the suit the leader called when leading the Joker.
    - Any other led card: `R = effectiveSuit(led card)`.
 4. If `R` exists and the player holds cards with that effective suit, they must play one of them (or the Joker per rule 2). If they hold none, any card is legal.
 
@@ -144,10 +144,10 @@ Define these terms:
 
 *Every other trick:*
 1. **Ace of Spades** was played: it wins.
-2. **Joker was led** and the hand is not NT: the Joker wins.
+2. **Joker was led**: the Joker wins, trump hand or NT alike. In an NT hand the leader also calls the suit (`R` in the "Following" rules) that everyone else must follow.
 3. **Two rule:** the led card is a two, and **every** card played has the same effective suit as the led two (a played Joker counts as outside the suit): the led two wins.
 4. **Highest trump** wins (trump order in section 3.6). Only applies to non-NT hands.
-5. **Highest card of the led suit** wins (natural rank, Ace high). In an NT hand where the Joker was led, the led suit is `R` from the "Following" rules.
+5. **Highest card of the led suit** wins (natural rank, Ace high).
 
 The winner collects the trick and leads the next one. There are **no restrictions on the last trick**.
 
@@ -188,7 +188,7 @@ type Move =
   | { type: 'pass' }
   | { type: 'nameAngel'; card: CardId }
   | { type: 'discard'; cards: CardId[] }   // Napoleon, after widow is added to hand
-  | { type: 'play'; card: CardId }
+  | { type: 'play'; card: CardId; calledSuit?: Suit }  // calledSuit: only when leading the Joker in an NT hand
   | { type: 'nextHand' };
 
 interface GameState {
@@ -208,7 +208,7 @@ interface GameState {
   angelSeat: Seat | null;          // secret; equals napoleon if own angel
   angelRevealed: boolean;          // true once the angel card is played
   discards: CardId[];
-  trick: { seat: Seat; card: CardId }[];
+  trick: { seat: Seat; card: CardId; calledSuit?: Suit }[];  // calledSuit set on the leading play only, when the Joker is led in an NT hand
   trickNumber: number;             // 1-based
   captured: CardId[][];            // by seat, cards from tricks that seat won
   scores: number[];                // cumulative across hands
@@ -311,7 +311,8 @@ Write these as named tests. All non-first-trick examples assume it is not trick 
 7. `3S` led (Spades not trump, Hearts trump). Joker holder must play the Joker even with Spades in hand. Another player with no Spades plays `5H`. Winner: `5H` (highest trump), not the Joker and not the `3S`.
 8. First trick, Hearts trump. Led `5C`; plays `9C`, `AC`, and a player with no clubs plays `JH`. Winner: `AC` (trump is ineffective).
 9. First trick: `AS` played on any suit wins.
-10. NT hand. Joker led, then `6D` (sets effective suit), then `KD`, then a player with no diamonds plays `AH`. Winner: `KD`. The Joker and `AH` do not win.
+10. NT hand. Joker led calling Diamonds, then `6D`, then `KD`, then a player with no diamonds plays `AH`. Winner: the Joker.
+10b. NT hand. Joker led calling Diamonds; a later player plays the Ace of Spades. Winner: `AS`.
 11. Spades trump. `AS` is a trump card. If trump is led and a player's only trump is `AS`, they must play it.
 
 **Legal plays**
@@ -319,7 +320,7 @@ Write these as named tests. All non-first-trick examples assume it is not trick 
 13. A follower holding the led suit may still play the Joker.
 14. Trump hand, Joker led: a player with trump must play trump. A player with none may play anything.
 15. Hearts trump, `8D` led: a player whose only diamond-ish card is `JD` is not required to follow (the sister jack is trump).
-16. NT hand, Joker led: the second player may play any card. The third and later players follow the suit of the second player's card.
+16. NT hand, Joker led: the leader calls a suit when leading it. Every other player must follow that called suit if able.
 
 **Bidding**
 17. Ordering: `12C < 12D < 12H < 12S < 12NT < 13C`.
@@ -379,7 +380,7 @@ These were not explicitly stated and were defaulted:
 2. A forced final bid may be any trump suit or NT at the minimum count of 12.
 3. A follower may play the Joker on the first trick as an ineffective discard. It just cannot be led then.
 4. On the first trick, jacks (including the sister jack) are normal cards of their natural suit for following.
-5. A Joker led in an NT hand loses to every other card.
+5. ~~A Joker led in an NT hand loses to every other card.~~ Superseded: see section 3.7 — a led Joker now wins an NT trick outright too, with the leader calling the suit everyone else must follow.
 6. A forced Joker (from a led `3S`) must be played even if the holder could follow suit.
 7. Napoleon may name any of the 53 cards as the angel, including one in their own hand.
 8. Bidding ends immediately after `20NT` since nothing can outrank it.

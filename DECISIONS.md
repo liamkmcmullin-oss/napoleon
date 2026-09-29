@@ -12,7 +12,7 @@ inconsistent.
 2. A forced final bid may be any trump suit or NT at the minimum count of 12.
 3. A follower may play the Joker on the first trick as an ineffective discard. It just cannot be led then.
 4. On the first trick, jacks (including the sister jack) are normal cards of their natural suit for following.
-5. A Joker led in an NT hand loses to every other card.
+5. ~~A Joker led in an NT hand loses to every other card.~~ Superseded by decision #24: a rule change now has it win outright, same as in a trump hand.
 6. A forced Joker (from a led `3S`) must be played even if the holder could follow suit.
 7. Napoleon may name any of the 53 cards as the angel, including one in their own hand.
 8. Bidding ends immediately after `20NT` since nothing can outrank it.
@@ -126,3 +126,49 @@ inconsistent.
     both `@napoleon/server` and `@napoleon/client` can depend on it without either pulling in the other's
     runtime. Also added `parseServerMessage`, mirroring `parseClientMessage`, so the client never has to
     trust an unvalidated `as ServerMessage` cast on incoming socket data.
+
+24. **Rule change: a led Joker now wins in an NT hand too, and the leader calls the suit.**
+    Previously (spec section 3.7, and decision #5 above) a Joker led in NT was powerless — it
+    couldn't win, and the suit to follow was whatever the *second* player happened to play. Per
+    an explicit rule change, a led Joker now wins an NT trick outright (still losing only to the
+    Ace of Spades, same as in a trump hand), and the suit everyone else must follow is chosen by
+    the leader at the moment they lead it, not inferred from the next card played. This needed a
+    new field on the leading `TrickPlay`/`play` `Move` — `calledSuit?: Suit` — since the suit is
+    now a choice baked into that specific play rather than something derivable from `trump` or
+    the rest of the trick. `legalMoves` expands a leadable Joker in an NT hand into one `play`
+    move per suit so a client can present the choice; `applyMove` requires `calledSuit` exactly
+    when leading the Joker in NT and rejects it everywhere else, so it can't be forged onto an
+    unrelated play.
+
+25. **Client: no router, no CSS framework, no state library.** `packages/client` switches between
+    Lobby / in-game / rules purely on values already in `GameContext` (`code`, `view`) plus one local
+    `showRules` flag in `App.tsx` — a real router is overkill for three screens with no deep-linking
+    need. Styling is hand-rolled CSS custom properties in `index.css` (design tokens + a handful of
+    reusable classes: `.panel`, `.btn`, `.card`, `.pill`, ...) rather than a component library, kept
+    deliberately small so every screen reads as one consistent system. All server state lives in a
+    single `GameContext` (a `useReducer` fed by parsed `ServerMessage`s); there's no separate state
+    library, since the whole client only ever needs to mirror one `PlayerView` at a time.
+
+26. **Client session persistence and reconnect.** The `{code, seat, token}` triple from a `joined`
+    message is saved to `localStorage`; on socket connect (including automatic reconnects after a
+    drop, with a capped exponential backoff), the client immediately sends a `reconnect` message if a
+    saved session exists. This is the browser-side half of decision #22's server-side reconnect
+    tokens — together they mean a refreshed tab or a brief network drop re-attaches to the same seat
+    instead of losing the player's place, satisfying Phase 5's "refreshing a browser mid-hand restores
+    the player's exact view" ahead of schedule (full persistence *across a server restart* is still
+    Phase 5's job — see #22).
+
+27. **Client UI for calling a suit (decision #24).** `legalMoves` can contain several `{type:'play',
+    card:'JOKER', calledSuit}` entries at once — one per suit — only when leading the Joker in an NT
+    hand. `Hand.tsx` detects this (more than one legal move sharing a card id) and opens a small
+    inline suit-picker before actually sending the move, rather than trying to guess or hardcode when
+    that case applies; every other card always maps to exactly one legal move and plays immediately
+    on click.
+
+28. **Client build: shared contract first, then parallelized.** `Card.tsx` (shared card rendering),
+    `GameContext.tsx` (the socket/state layer), `App.tsx` (screen routing), and `Lobby.tsx` (session
+    lifecycle: create/join/reconnect) were built first, single-threaded, since every other component
+    depends on their exact shape and inconsistency there would ripple everywhere. Once that contract
+    was fixed, the remaining seven components split cleanly into three independent groups with no
+    shared files (bidding; angel/discard/hand-result; scoreboard/rules) and were built in parallel by
+    subagents against that fixed contract, then reviewed and integrated by hand.

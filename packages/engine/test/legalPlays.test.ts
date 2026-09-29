@@ -49,25 +49,13 @@ describe('legalPlays (spec section 8)', () => {
     expect(legal.sort()).toEqual(hand.sort());
   });
 
-  it('16. NT hand, Joker led: second player free, later players follow the established suit', () => {
-    const led = trick([[0, 'JOKER']]);
-    const secondPlayer = legalPlays(['6D', '9C', 'KH'], led, { trump: 'NT', firstTrick: false, config });
-    expect(secondPlayer.sort()).toEqual(['6D', '9C', 'KH'].sort());
+  it('16. NT hand, Joker led: the leader calls a suit and everyone must follow it', () => {
+    const led: TrickPlay[] = [{ seat: 0, card: 'JOKER', calledSuit: 'D' }];
+    const secondPlayerWithDiamond = legalPlays(['6D', '9C', 'KH'], led, { trump: 'NT', firstTrick: false, config });
+    expect(secondPlayerWithDiamond.sort()).toEqual(['6D']);
 
-    const ledWithEstablishedSuit = trick([[0, 'JOKER'], [1, '6D']]);
-    const thirdPlayerWithDiamond = legalPlays(['9D', '9C', 'KH'], ledWithEstablishedSuit, {
-      trump: 'NT',
-      firstTrick: false,
-      config,
-    });
-    expect(thirdPlayerWithDiamond.sort()).toEqual(['9D']);
-
-    const thirdPlayerWithoutDiamond = legalPlays(['9C', 'KH'], ledWithEstablishedSuit, {
-      trump: 'NT',
-      firstTrick: false,
-      config,
-    });
-    expect(thirdPlayerWithoutDiamond.sort()).toEqual(['9C', 'KH'].sort());
+    const secondPlayerWithoutDiamond = legalPlays(['9C', 'KH'], led, { trump: 'NT', firstTrick: false, config });
+    expect(secondPlayerWithoutDiamond.sort()).toEqual(['9C', 'KH'].sort());
   });
 
   it('3 of Spades forces the Joker even when the holder could follow suit', () => {

@@ -10,16 +10,15 @@ export interface TrickCtx {
 
 /**
  * The suit a follower must match, per the "Following" rules. null means
- * any card is legal (no trick started, or Joker led in NT with nothing
- * played after it yet).
+ * any card is legal (no trick started yet).
  */
 export function requiredSuit(trick: TrickPlay[], trump: Trump, firstTrick: boolean): Suit | 'TRUMP' | null {
   if (trick.length === 0) return null;
   const led = trick[0]!.card;
   if (led === JOKER) {
     if (trump !== 'NT') return 'TRUMP';
-    if (trick.length < 2) return null;
-    return effectiveSuit(trick[1]!.card, trump, firstTrick) as Suit;
+    // The leader calls the suit when leading the Joker in a No Trump hand.
+    return trick[0]!.calledSuit ?? null;
   }
   return effectiveSuit(led, trump, firstTrick) as Suit | 'TRUMP';
 }
