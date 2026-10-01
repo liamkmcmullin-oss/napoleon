@@ -47,13 +47,17 @@ export function resolveTrick(trick: TrickPlay[], ctx: ResolveCtx): Seat {
     return trick[0]!.seat;
   }
 
-  // Rule 3: two rule.
-  if (!isJoker(led) && cardRank(led) === '2') {
-    const ledEffSuit = effectiveSuit(led, trump, firstTrick);
-    const allMatch = trick.every(
-      (p) => !isJoker(p.card) && effectiveSuit(p.card, trump, firstTrick) === ledEffSuit,
-    );
-    if (allMatch) return trick[0]!.seat;
+  // Rule 3: two rule. Whoever played a two of the led suit wins the
+  // trick outright, as long as the suit was never broken — every card
+  // played (by anyone, not just the leader) matches the led effective
+  // suit, so no one trumped, sloughed off, or played the Joker.
+  const ledEffSuit = effectiveSuit(led, trump, firstTrick);
+  const allMatch = trick.every(
+    (p) => !isJoker(p.card) && effectiveSuit(p.card, trump, firstTrick) === ledEffSuit,
+  );
+  if (allMatch) {
+    const two = trick.find((p) => cardRank(p.card) === '2');
+    if (two) return two.seat;
   }
 
   // Rule 4: highest trump, non-NT only.

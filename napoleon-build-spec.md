@@ -145,7 +145,7 @@ Define these terms:
 *Every other trick:*
 1. **Ace of Spades** was played: it wins.
 2. **Joker was led**: the Joker wins, trump hand or NT alike. In an NT hand the leader also calls the suit (`R` in the "Following" rules) that everyone else must follow.
-3. **Two rule:** the led card is a two, and **every** card played has the same effective suit as the led two (a played Joker counts as outside the suit): the led two wins.
+3. **Two rule:** a two was played (by anyone — not only the leader) and **every** card played has the same effective suit as the led card (a played Joker counts as outside the suit): whoever played the two wins.
 4. **Highest trump** wins (trump order in section 3.6). Only applies to non-NT hands.
 5. **Highest card of the led suit** wins (natural rank, Ace high).
 

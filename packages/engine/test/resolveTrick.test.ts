@@ -37,6 +37,16 @@ describe('resolveTrick (spec section 8)', () => {
     expect(resolveTrick(t, { trump: 'H', firstTrick: false })).toBe(0);
   });
 
+  it('6b. two rule applies even when the two is not the led card, as long as the suit is unbroken', () => {
+    const t = trick([[0, '5D'], [1, 'KD'], [2, '2D'], [3, 'AD']]);
+    expect(resolveTrick(t, { trump: 'H', firstTrick: false })).toBe(2);
+  });
+
+  it('6c. a two played out of position still fails the two rule if anyone broke suit', () => {
+    const t = trick([[0, '5D'], [1, 'KD'], [2, '2D'], [3, 'JOKER']]);
+    expect(resolveTrick(t, { trump: 'H', firstTrick: false })).toBe(1);
+  });
+
   it('7. forced Joker (from led 3S) has no effect; highest trump wins, not 3S', () => {
     const t = trick([[0, '3S'], [1, 'JOKER'], [2, '5H'], [3, '4H']]);
     expect(resolveTrick(t, { trump: 'H', firstTrick: false })).toBe(2);

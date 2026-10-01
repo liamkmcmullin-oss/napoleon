@@ -44,6 +44,19 @@ function seatLabel(seat: Seat, names: (string | null)[]): string {
   return names[seat] ?? `Seat ${seat}`;
 }
 
+// Nudges each played card toward the screen position of the seat that
+// played it, so a full trick fans out around the center instead of
+// stacking into one unreadable pile. The most recently played card
+// overrides this with {x:0, y:0} (dead center, on top) — see render.
+const TRICK_DIRECTION_OFFSET: Record<string, { x: number; y: number }> = {
+  left: { x: -48, y: 8 },
+  right: { x: 48, y: 8 },
+  top: { x: 0, y: -34 },
+  'top-left': { x: -36, y: -30 },
+  'top-right': { x: 36, y: -30 },
+  self: { x: 0, y: 40 },
+};
+
 const MAX_VISIBLE_BACKS = 8;
 
 function opponentFan(count: number) {
@@ -64,6 +77,8 @@ function opponentFan(count: number) {
 
 export function Table({ view, names }: { view: PlayerView; names: (string | null)[] }): React.JSX.Element {
   const others = seatPositions(view.players, view.seat);
+  const directionBySeat = new Map<Seat, string>(others.map(({ seat, position }) => [seat, position]));
+  directionBySeat.set(view.seat, 'self');
   const prevViewRef = useRef(view);
   const [held, setHeld] = useState<HeldTrick | null>(null);
 
@@ -117,14 +132,33 @@ export function Table({ view, names }: { view: PlayerView; names: (string | null
           );
         })}
 
-        <div className="trick-grid">
-          {trickToShow.map((play) => (
-            <div className="trick-slot" key={play.seat}>
-              <Card card={play.card} small />
-              <span>{seatLabel(play.seat, names)}</span>
-            </div>
-          ))}
-          {trickToShow.length === 0 && <span className="pill">Trick {trickNumberToShow} of {view.config.handSize}</span>}
+        <div className="trick-area">
+          <div className="trick-grid">
+            {trickToShow.map((play, i) => {
+              const isLast = i === trickToShow.length - 1;
+              const offset = isLast
+                ? { x: 0, y: 0 }
+                : TRICK_DIRECTION_OFFSET[directionBySeat.get(play.seat) ?? 'top']!;
+              return (
+                <div
+                  key={play.seat}
+                  className={`trick-slot ${isLast ? 'trick-slot--last' : ''}`}
+                  style={{
+                    transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
+                    zIndex: isLast ? 10 : 1,
+                  }}
+                >
+                  <Card card={play.card} small />
+                  <span>{seatLabel(play.seat, names)}</span>
+                </div>
+              );
+            })}
+            {trickToShow.length === 0 && (
+              <span className="pill" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+                Trick {trickNumberToShow} of {view.config.handSize}
+              </span>
+            )}
+          </div>
           {showingHeld && held.winnerSeat !== null && (
             <span className="trick-grid__winner">Trick won by {seatLabel(held.winnerSeat, names)}</span>
           )}

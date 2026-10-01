@@ -10,10 +10,11 @@ type PlayMove = Extract<Move, { type: 'play' }>;
 const WIN_CHEAPLY_THRESHOLD = 2;
 
 /** Who is currently ahead in a (possibly incomplete) trick, using the same
- * precedence as resolveTrick(). Doesn't implement the "two rule" (which
- * needs the trick to be complete to evaluate) — an acceptable gap for a
- * no-lookahead heuristic; worst case it's slightly too eager to "win"
- * against a led two. */
+ * precedence as resolveTrick(). Doesn't implement the "two rule" (whether
+ * any two played this trick wins depends on the suit staying unbroken for
+ * the *whole* trick, so it can't be evaluated until the trick is complete)
+ * — an acceptable gap for a no-lookahead heuristic; worst case it's
+ * slightly too eager to "win" against a two already on the table. */
 function currentBestSeat(trick: TrickPlay[], trump: Trump, firstTrick: boolean): number {
   const ace = trick.find((p) => p.card === 'AS');
   if (ace) return ace.seat;

@@ -277,3 +277,12 @@ inconsistent.
     (`packages/bot/src/heuristic/bidding.ts`). Re-simulating 3,000 full 4-player auctions afterward
     gives winning bids clustered in the 14-17 range with only ~3% reaching 20 (5-player: 12-15, ~0.5%
     reaching 20) — a believable spread instead of a near-constant 20.
+
+36. **House rule: the two rule applies to any two played in the trick, not only a led one.** Per explicit
+    request, superseding the original spec/RULES.md wording ("if a 2 is led..."). `resolveTrick.ts`'s
+    Rule 3 now checks whether *any* card played this trick is a two of the led effective suit (still
+    requiring the suit to stay unbroken — no trumping, no Joker, no off-suit discards) and, if so, that
+    two's player wins, regardless of seating order within the trick. This still only matters once the
+    whole trick is in, which is why `packages/bot/src/heuristic/play.ts`'s `currentBestSeat` (used for
+    the no-lookahead "is winning this trick cheap?" decision on an *incomplete* trick) still doesn't
+    implement it — same gap as before #34, just restated since it's no longer only about a led two.

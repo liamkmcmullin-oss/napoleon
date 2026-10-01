@@ -79,7 +79,7 @@ Check these in order — the first one that applies decides the winner:
 
 1. **The Ace of Spades always wins** the trick.
 2. **A led Joker wins** (see "The Joker" below).
-3. **The Two rule:** if a **2** is led and **every** player follows suit (no trumping or Joker), the **2 wins** — the lowest card takes it.
+3. **The Two rule:** if a **2** is played — by anyone, not only the leader — and **every** player follows suit (no trumping or Joker), that **2 wins** — the lowest card takes it.
 4. Otherwise the **highest trump** wins, if any trump was played.
 5. Otherwise the **highest card of the suit that was led** wins.
 

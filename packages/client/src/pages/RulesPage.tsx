@@ -75,7 +75,7 @@ export function RulesPage(): React.JSX.Element {
             Leading the Joker in a No Trump hand: the leader also calls a suit at that moment, and everyone
             else must follow that called suit if able, exactly as if it had been led normally.
           </li>
-          <li>If a 2 is led and every player follows suit, the 2 wins the trick.</li>
+          <li>If a 2 is played by anyone and every player follows suit (the suit stays unbroken), the 2 wins the trick — even if it wasn't led.</li>
         </ul>
       </div>
 

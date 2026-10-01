@@ -365,21 +365,40 @@ button {
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.35);
 }
 
-.trick-grid {
+/* Each played card sits offset toward the direction of the seat that
+   played it (see TRICK_DIRECTION_OFFSET in Table.tsx), so all of them
+   stay visible around the middle instead of stacking exactly on top of
+   one another — except the most recently played card, which sits dead
+   center and on top, as the natural focal point of the trick. */
+
+.trick-area {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   gap: var(--space-2);
 }
 
+.trick-grid {
+  position: relative;
+  width: 170px;
+  height: 110px;
+}
+
 .trick-slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-1);
   font-size: 0.7rem;
   color: rgba(245, 245, 240, 0.8);
+}
+
+.trick-slot--last {
+  color: var(--color-text-on-dark);
+  font-weight: 600;
 }
 
 /* The viewer's own hand, fanned like cards actually held. Card positions
