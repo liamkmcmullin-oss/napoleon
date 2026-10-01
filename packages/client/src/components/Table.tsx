@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { CardId, PlayerView, Seat, TrickPlay } from '@napoleon/engine';
+import type { PlayerView, Seat, TrickPlay } from '@napoleon/engine';
 import { Card } from './Card.js';
 
 // A finished trick stays on the table for at least this long — and
@@ -11,15 +11,8 @@ const TRICK_HOLD_MS = 3000;
 interface HeldTrick {
   trick: TrickPlay[];
   trickNumber: number;
-  winnerSeat: Seat | null;
+  winnerSeat: Seat;
   until: number;
-}
-
-function findTrickWinner(prevCaptured: CardId[][], nextCaptured: CardId[][]): Seat | null {
-  for (let seat = 0; seat < nextCaptured.length; seat++) {
-    if ((nextCaptured[seat]?.length ?? 0) > (prevCaptured[seat]?.length ?? 0)) return seat;
-  }
-  return null;
 }
 
 /**
@@ -79,17 +72,24 @@ export function Table({ view, names }: { view: PlayerView; names: (string | null
   const others = seatPositions(view.players, view.seat);
   const directionBySeat = new Map<Seat, string>(others.map(({ seat, position }) => [seat, position]));
   directionBySeat.set(view.seat, 'self');
-  const prevViewRef = useRef(view);
   const [held, setHeld] = useState<HeldTrick | null>(null);
+  // `view.trick` never actually holds all N plays at once from the
+  // client's perspective — the server resolves a trick (and clears
+  // `trick` back to []) in the same state transition as the last card
+  // being played, so there's no broadcast in between to catch it at 4.
+  // `view.tricks` (every *completed* trick, each with its full `plays`
+  // array and `winner`) is what actually has the full picture.
+  const prevTricksCountRef = useRef(view.tricks.length);
 
   useEffect(() => {
-    const prev = prevViewRef.current;
-    prevViewRef.current = view;
-    if (prev.trick.length > 0 && view.trick.length === 0 && prev.trickNumber !== view.trickNumber) {
+    const prevCount = prevTricksCountRef.current;
+    prevTricksCountRef.current = view.tricks.length;
+    if (view.tricks.length > prevCount) {
+      const completed = view.tricks[view.tricks.length - 1]!;
       setHeld({
-        trick: prev.trick,
-        trickNumber: prev.trickNumber,
-        winnerSeat: findTrickWinner(prev.captured, view.captured),
+        trick: completed.plays,
+        trickNumber: view.tricks.length,
+        winnerSeat: completed.winner,
         until: Date.now() + TRICK_HOLD_MS,
       });
     }
@@ -159,7 +159,7 @@ export function Table({ view, names }: { view: PlayerView; names: (string | null
               </span>
             )}
           </div>
-          {showingHeld && held.winnerSeat !== null && (
+          {showingHeld && (
             <span className="trick-grid__winner">Trick won by {seatLabel(held.winnerSeat, names)}</span>
           )}
         </div>
