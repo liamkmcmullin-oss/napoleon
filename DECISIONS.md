@@ -264,3 +264,16 @@ inconsistent.
       bidding-tuned `cardStrength`, which exists to rank cards for hand-strength purposes, not to mirror
       true trick-winning precedence. "Not already in hand" is the only information a bot (or a human)
       actually has — nobody can see who holds what, by design (#2's hidden information rule).
+
+35. **Bidding fix #34 wasn't enough: bots still rode every auction to 20.** The recalibration above
+    fixed the *per-hand* threshold/scale, but `chooseBid` had no way to ever back out of an auction it
+    had already decided to enter — once `bestStrength >= WORTH_BIDDING_THRESHOLD`, it unconditionally
+    returned a bid, no matter how far the current bid had already climbed past what the hand actually
+    supported. With 4-5 bidders in a loop, each one simply matched whatever the legal minimum was that
+    round, so nearly every auction ground its way up to the config maximum one small raise at a time —
+    confirmed by simulating full auctions (not just isolated hands) with the real engine + bot code
+    before and after. The fix: before committing to a bid, check whether the *cheapest* currently-legal
+    bid already exceeds this hand's own `targetCount`; if so, pass instead of chasing it
+    (`packages/bot/src/heuristic/bidding.ts`). Re-simulating 3,000 full 4-player auctions afterward
+    gives winning bids clustered in the 14-17 range with only ~3% reaching 20 (5-player: 12-15, ~0.5%
+    reaching 20) — a believable spread instead of a near-constant 20.
