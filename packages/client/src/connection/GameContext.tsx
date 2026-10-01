@@ -113,6 +113,7 @@ function reduce(state: GameState, action: Action): GameState {
 interface GameContextValue extends GameState {
   createRoom: (players: 4 | 5, name: string) => void;
   joinRoom: (code: string, name: string) => void;
+  addBot: () => void;
   sendMove: (move: Move) => void;
   leaveRoom: () => void;
   clearError: () => void;
@@ -175,6 +176,7 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
 
   const createRoom = useCallback((players: 4 | 5, name: string) => send({ type: 'createRoom', players, name }), [send]);
   const joinRoom = useCallback((code: string, name: string) => send({ type: 'joinRoom', code, name }), [send]);
+  const addBot = useCallback(() => send({ type: 'addBot' }), [send]);
   const sendMove = useCallback((move: Move) => send({ type: 'move', move }), [send]);
   const clearError = useCallback(() => dispatch({ type: 'clearError' }), []);
   const leaveRoom = useCallback(() => {
@@ -182,7 +184,7 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
     dispatch({ type: 'leftRoom' });
   }, []);
 
-  const value: GameContextValue = { ...state, createRoom, joinRoom, sendMove, leaveRoom, clearError };
+  const value: GameContextValue = { ...state, createRoom, joinRoom, addBot, sendMove, leaveRoom, clearError };
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }
 

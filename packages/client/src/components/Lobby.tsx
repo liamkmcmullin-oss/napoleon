@@ -20,7 +20,7 @@ function saveName(name: string): void {
 }
 
 export function Lobby(): React.JSX.Element {
-  const { status, code, players, names, seat, createRoom, joinRoom, leaveRoom, error, clearError } = useGame();
+  const { status, code, players, names, seat, createRoom, joinRoom, addBot, leaveRoom, error, clearError } = useGame();
   const [name, setName] = useState(loadSavedName());
   const [joinCode, setJoinCode] = useState('');
   const [playerCount, setPlayerCount] = useState<4 | 5>(4);
@@ -29,10 +29,11 @@ export function Lobby(): React.JSX.Element {
     // Room exists but the hand hasn't started yet (that's App's job once `view` appears).
     const filled = names.filter((n) => n !== null).length;
     const total = players ?? 0;
+    const openSeats = Math.max(total - filled, 0);
     return (
       <div className="panel stack">
         <h2>Room {code}</h2>
-        <p>Share this code with your friends. Waiting for {Math.max(total - filled, 0)} more player(s)...</p>
+        <p>Share this code with your friends. Waiting for {openSeats} more player(s)...</p>
         <div className="stack">
           {Array.from({ length: total }, (_, i) => (
             <div className="pill" key={i}>
@@ -40,9 +41,22 @@ export function Lobby(): React.JSX.Element {
             </div>
           ))}
         </div>
-        <button className="btn btn--secondary" onClick={leaveRoom}>
-          Leave room
-        </button>
+        {error && (
+          <div className="error-banner">
+            <span>{error}</span>
+            <button className="btn btn--small" onClick={clearError}>
+              Dismiss
+            </button>
+          </div>
+        )}
+        <div className="row">
+          <button className="btn btn--secondary" onClick={addBot} disabled={openSeats === 0}>
+            Add bot
+          </button>
+          <button className="btn btn--secondary" onClick={leaveRoom}>
+            Leave room
+          </button>
+        </div>
       </div>
     );
   }

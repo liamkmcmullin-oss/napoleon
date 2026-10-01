@@ -8,10 +8,16 @@ build spec, and `DECISIONS.md` for judgment calls made along the way.
 packages/
   engine/     pure rules engine (no I/O, no framework)
   protocol/   wire protocol shared between server and client
+  bot/        bot player strategies (random, heuristic)
   server/     Node + ws multiplayer server (rooms, seats, move validation)
   client/     Vite + React web client
   cli/        text-mode hot-seat game and a random-move bot
 ```
+
+Short a player? Click **Add bot** in a room's waiting screen to fill an
+empty seat — bots play a full hand on their own turns (heuristic strategy
+by default; see DECISIONS.md #33). Lobby-only for now: bots fill open
+seats before a game starts, not mid-game if someone disconnects.
 
 ## Local development
 

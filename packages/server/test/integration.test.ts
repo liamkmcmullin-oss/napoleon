@@ -5,6 +5,10 @@ import { startServer } from '../src/server.js';
 import type { NapoleonServer } from '../src/server.js';
 import type { ServerMessage } from '@napoleon/protocol';
 
+// Skips the deliberate bot pacing delay (see server.ts) so a full
+// bot-driven hand doesn't take 25-45 real seconds in the test suite.
+process.env.NAPOLEON_FAST_BOTS = '1';
+
 let server: NapoleonServer | null = null;
 
 afterEach(async () => {
@@ -196,6 +200,90 @@ describe('server integration', () => {
     const errorMsg = client.messages.find((m) => m.type === 'error');
     expect(errorMsg).toBeDefined();
     client.close();
+  });
+
+  it('a human plus three bots completes a full hand, with bots acting on their own', async () => {
+    const { url, server: s } = await boot();
+    server = s;
+
+    const host = new TestClient(url);
+    await host.waitOpen();
+    host.send({ type: 'createRoom', players: 4, name: 'Alice' });
+    await host.waitFor(() => host.code !== null);
+
+    host.send({ type: 'addBot' });
+    host.send({ type: 'addBot' });
+    host.send({ type: 'addBot' });
+    await host.waitFor(() => {
+      const roster = [...host.messages].reverse().find((m) => m.type === 'roster');
+      return roster?.type === 'roster' && roster.names.every((n) => n !== null);
+    }, 2000);
+    const roster = [...host.messages].reverse().find((m) => m.type === 'roster');
+    expect(roster).toMatchObject({ type: 'roster', names: ['Alice', 'Bot 1', 'Bot 2', 'Bot 3'] });
+
+    // Seat 0 (Alice) is a real human and still has to take her own turns
+    // — only seats 1-3 (the bots) play themselves. So this still drives
+    // Alice with random legal moves whenever it's her turn, same as the
+    // "two of four clients" test, and just lets the hand's bot turns
+    // happen on their own in between.
+    let guard = 0;
+    for (;;) {
+      guard++;
+      if (guard > 3000) throw new Error('hand did not complete within the step budget');
+      if (host.latestView?.phase === 'handOver') break;
+
+      const myTurnToDiscard = host.latestView?.phase === 'discard' && host.latestView.seat === host.latestView.napoleon;
+      const myTurnOtherwise = host.latestLegalMoves.length > 0 && host.latestView?.phase !== 'handOver';
+      if (!myTurnToDiscard && !myTurnOtherwise) {
+        // Either a bot's turn (the server is handling it on its own) or a
+        // broadcast we haven't received yet — just wait a beat and recheck.
+        await new Promise((r) => setTimeout(r, 5));
+        continue;
+      }
+
+      let move: Move;
+      if (myTurnToDiscard) {
+        const view = host.latestView!;
+        const shuffled = [...view.hand].sort(() => Math.random() - 0.5);
+        move = { type: 'discard', cards: shuffled.slice(0, view.config.widowSize) };
+      } else {
+        const moves = host.latestLegalMoves;
+        move = moves[Math.floor(Math.random() * moves.length)]!;
+      }
+      const beforeSeq = host.stateSeq;
+      host.send({ type: 'move', move });
+      await host.waitFor(() => host.stateSeq > beforeSeq);
+    }
+
+    const finalView = host.latestView!;
+    expect(finalView.handResult).not.toBeNull();
+    for (const count of finalView.handCounts) expect(count).toBe(0);
+    const totalCards = finalView.captured.flat().length + finalView.discardCount;
+    expect(totalCards).toBe(53);
+
+    host.close();
+  });
+
+  it('addBot is rejected for a room that is already full of humans', async () => {
+    const { url, server: s } = await boot();
+    server = s;
+
+    const clients = [new TestClient(url), new TestClient(url), new TestClient(url), new TestClient(url)];
+    await Promise.all(clients.map((c) => c.waitOpen()));
+    clients[0]!.send({ type: 'createRoom', players: 4, name: 'Alice' });
+    await clients[0]!.waitFor(() => clients[0]!.code !== null);
+    const code = clients[0]!.code!;
+    clients[1]!.send({ type: 'joinRoom', code, name: 'Bob' });
+    clients[2]!.send({ type: 'joinRoom', code, name: 'Cara' });
+    clients[3]!.send({ type: 'joinRoom', code, name: 'Dee' });
+    await Promise.all(clients.map((c) => c.waitFor(() => c.latestView !== null)));
+
+    clients[0]!.send({ type: 'addBot' });
+    await clients[0]!.waitFor(() => clients[0]!.messages.some((m) => m.type === 'error'));
+    const err = clients[0]!.messages.find((m) => m.type === 'error');
+    expect(err).toBeDefined();
+
+    clients.forEach((c) => c.close());
   });
 
   it('reconnect re-attaches a dropped seat using its token', async () => {

@@ -13,6 +13,7 @@
     "lint": "eslint src test"
   },
   "dependencies": {
+    "@napoleon/bot": "workspace:*",
     "@napoleon/engine": "workspace:*",
     "@napoleon/protocol": "workspace:*",
     "ws": "^8.18.0"

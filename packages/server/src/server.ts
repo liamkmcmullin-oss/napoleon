@@ -4,10 +4,24 @@ import { resolve } from 'node:path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { legalMoves, viewFor } from '@napoleon/engine';
 import type { Seat } from '@napoleon/engine';
+import { chooseBotMove, DEFAULT_BOT_STRATEGY } from '@napoleon/bot';
 import { parseClientMessage } from '@napoleon/protocol';
 import type { ServerMessage } from '@napoleon/protocol';
 import { RoomManager } from './rooms.js';
 import { createStaticHandler } from './static.js';
+
+// A short, randomized pause before a bot acts — purely for feel (so a
+// bot's turn doesn't feel instant/jarring), not for correctness. Tests
+// that play whole bot-driven hands set NAPOLEON_FAST_BOTS to skip the
+// pacing (a 4-player hand is ~50 bot moves; at the real delay that's
+// 25-45 real seconds, fine once but slow for routine `pnpm test`). Read
+// fresh on every call, not hoisted into a module-level constant — ES
+// imports are evaluated before a test file's own top-level statements,
+// so a constant frozen at import time would miss an env var a test sets
+// after importing this module.
+function botMoveDelayRange(): [number, number] {
+  return process.env.NAPOLEON_FAST_BOTS ? [0, 1] : [500, 900];
+}
 
 interface Session {
   code: string;
@@ -91,6 +105,40 @@ export function startServer(port: number): NapoleonServer {
     for (const ws of seatMap.values()) sendRoster(ws, code);
   }
 
+  /** If it's now a bot's turn, plays its move after a short delay, then
+   * checks again — cascading through any further consecutive bot turns
+   * until a human's turn comes up or the hand ends. Bots never trigger
+   * `nextHand` themselves; only a connected human advances past
+   * handOver (see DECISIONS.md). Safe to call unconditionally after any
+   * state-changing operation — it's a no-op when it isn't a bot's turn. */
+  function scheduleBotTurnIfAny(code: string): void {
+    const [minDelay, maxDelay] = botMoveDelayRange();
+    setTimeout(
+      () => {
+        const room = manager.getRoom(code);
+        if (!room || !room.state || room.state.phase === 'handOver') return;
+        const actingSeat = room.state.turn;
+        if (!room.seats[actingSeat]?.isBot) return;
+
+        const view = viewFor(room.state, actingSeat);
+        // Bots run in-process, not over the wire, so they get the
+        // engine's true legalMoves (including the full discard-
+        // combination list a real client never receives — see
+        // DECISIONS.md #21 and packages/bot/test/property.test.ts).
+        const moves = legalMoves(room.state, actingSeat);
+        const move = chooseBotMove(DEFAULT_BOT_STRATEGY, view, moves, Math.random);
+        const res = manager.applyMove(code, actingSeat, move);
+        if (!res.ok) {
+          console.error(`bot move rejected in room ${code}, seat ${actingSeat}: ${res.error}`);
+          return;
+        }
+        broadcastState(code);
+        scheduleBotTurnIfAny(code);
+      },
+      minDelay + Math.random() * (maxDelay - minDelay),
+    );
+  }
+
   wss.on('connection', (ws) => {
     ws.on('message', (raw) => {
       const msg = parseClientMessage(String(raw));
@@ -117,6 +165,23 @@ export function startServer(port: number): NapoleonServer {
           send(ws, { type: 'joined', code: res.room.code, seat: res.seat, token: res.token, players: res.room.players });
           broadcastRoster(res.room.code);
           broadcastState(res.room.code); // no-ops until the room is full and the hand exists
+          scheduleBotTurnIfAny(res.room.code);
+          break;
+        }
+        case 'addBot': {
+          const session = sessionOf.get(ws);
+          if (!session) {
+            send(ws, { type: 'error', message: 'not joined to a room' });
+            break;
+          }
+          const res = manager.addBot(session.code);
+          if (!res.ok) {
+            send(ws, { type: 'error', message: res.error });
+            break;
+          }
+          broadcastRoster(session.code);
+          broadcastState(session.code); // no-ops until the room is full and the hand exists
+          scheduleBotTurnIfAny(session.code);
           break;
         }
         case 'reconnect': {
@@ -143,6 +208,7 @@ export function startServer(port: number): NapoleonServer {
             break;
           }
           broadcastState(session.code);
+          scheduleBotTurnIfAny(session.code);
           break;
         }
       }

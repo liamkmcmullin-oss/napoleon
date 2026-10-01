@@ -10,6 +10,7 @@ export type ClientMessage =
   | { type: 'createRoom'; players: 4 | 5; name: string }
   | { type: 'joinRoom'; code: string; name: string }
   | { type: 'reconnect'; code: string; seat: Seat; token: string }
+  | { type: 'addBot' }
   | { type: 'move'; move: Move };
 
 /**
@@ -57,6 +58,8 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       if (!Number.isInteger(seat) || seat < 0) return null;
       return { type: 'reconnect', code: obj.code.toUpperCase(), seat, token: obj.token };
     }
+    case 'addBot':
+      return { type: 'addBot' };
     case 'move':
       if (typeof obj.move !== 'object' || obj.move === null) return null;
       // Structural/semantic legality of the move itself is enforced by applyMove.

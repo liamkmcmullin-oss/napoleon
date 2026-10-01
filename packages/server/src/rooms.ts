@@ -22,7 +22,9 @@ function randomSeed(): number {
 
 export interface RoomSeat {
   name: string | null;
+  /** Always null for a bot seat — there's no real connection to reconnect. */
   token: string | null;
+  isBot: boolean;
 }
 
 export interface Room {
@@ -45,11 +47,17 @@ export class RoomManager {
     return code;
   }
 
+  private startIfFull(room: Room): void {
+    if (room.seats.every((s) => s.name !== null)) {
+      room.state = createHand(defaultConfig(room.players), randomSeed(), 0);
+    }
+  }
+
   createRoom(players: 4 | 5, hostName: string): { room: Room; seat: Seat; token: string } {
     const code = this.uniqueCode();
     const token = randomToken();
-    const seats: RoomSeat[] = Array.from({ length: players }, () => ({ name: null, token: null }));
-    seats[0] = { name: hostName, token };
+    const seats: RoomSeat[] = Array.from({ length: players }, () => ({ name: null, token: null, isBot: false }));
+    seats[0] = { name: hostName, token, isBot: false };
     const room: Room = { code, players, seats, state: null };
     this.rooms.set(code, room);
     return { room, seat: 0, token };
@@ -62,17 +70,30 @@ export class RoomManager {
   joinRoom(code: string, name: string): RoomResult<{ room: Room; seat: Seat; token: string }> {
     const room = this.rooms.get(code);
     if (!room) return { ok: false, error: 'room not found' };
-    const seat = room.seats.findIndex((s) => s.token === null);
+    const seat = room.seats.findIndex((s) => s.name === null);
     if (seat === -1) return { ok: false, error: 'room is full' };
 
     const token = randomToken();
-    room.seats[seat] = { name, token };
-
-    if (room.seats.every((s) => s.token !== null)) {
-      room.state = createHand(defaultConfig(room.players), randomSeed(), 0);
-    }
+    room.seats[seat] = { name, token, isBot: false };
+    this.startIfFull(room);
 
     return { ok: true, room, seat, token };
+  }
+
+  /** Fills the next open seat with a bot — only while the room is still
+   * waiting for players (Phase 4 scope: lobby-only, see DECISIONS.md). */
+  addBot(code: string): RoomResult<{ room: Room; seat: Seat }> {
+    const room = this.rooms.get(code);
+    if (!room) return { ok: false, error: 'room not found' };
+    if (room.state) return { ok: false, error: 'the game has already started' };
+    const seat = room.seats.findIndex((s) => s.name === null);
+    if (seat === -1) return { ok: false, error: 'room is full' };
+
+    const botNumber = room.seats.filter((s) => s.isBot).length + 1;
+    room.seats[seat] = { name: `Bot ${botNumber}`, token: null, isBot: true };
+    this.startIfFull(room);
+
+    return { ok: true, room, seat };
   }
 
   reconnect(code: string, seat: Seat, token: string): RoomResult<{ room: Room }> {

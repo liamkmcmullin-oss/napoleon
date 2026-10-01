@@ -208,3 +208,38 @@ inconsistent.
     multi-stage build to trim the final image (copying only `dist/` + production `node_modules` out of a
     build stage) — again, "tiny scale... favor simplicity" (section 1). The image is larger than it needs
     to be; that's an acceptable trade for a Dockerfile anyone can read in ten seconds.
+
+33. **Bots: new `packages/bot`, server-driven, lobby-only, heuristic strategy.** Added to let a game
+    start short-handed, per explicit request (not in the original spec, which listed "AI opponents beyond
+    the random test bot" as a non-goal). Design choices, each picked over a real alternative:
+    - **Server-driven, not fake WebSocket clients.** The server already has `legalMoves`/`applyMove`/
+      `viewFor` in-process; when `GameState.turn` belongs to a bot seat, `scheduleBotTurnIfAny` in
+      `server.ts` just computes and applies a move directly, after a short randomized delay purely for
+      feel. No subprocess, no extra connection, nothing for the client to know about beyond seeing a
+      bot's name in the roster. A bot never sees more than `viewFor`/`legalMoves` would give a real
+      player at that seat — it cannot peek at the true `GameState`, so it can't cheat even by accident.
+    - **`BotStrategy` is a one-method interface** (`chooseMove(view, legalMoves, rng) => Move`) in a
+      `BOT_STRATEGIES` registry keyed by name. This is specifically so a future stronger strategy (search/
+      Monte Carlo, discussed but explicitly deferred) is a new entry in that registry, not a rewrite of
+      how bots plug into rooms/server/client.
+    - **`heuristicStrategy`** (the default): hand-strength-based bidding (passes on weak hands unless
+      forced by the no-all-pass rule; strength maps onto a bid count via `packages/bot/src/heuristic/
+      bidding.ts`'s calibration), discards the weakest cards first, and plays via a no-lookahead "take it
+      cheaply if you can, hold back an expensive card unless you're last to act" rule
+      (`heuristic/play.ts`). Angel-naming stays a random pick among the 53 cards — see the comment atop
+      `heuristic/index.ts` for why that one phase wasn't worth a heuristic. `randomStrategy` (uniform
+      random legal move, relocated from `packages/cli`) is kept in the registry mainly as the stress-test
+      baseline it always was.
+    - **Bots get the engine's true `legalMoves`, not the wire-trimmed version a real client receives** —
+      the `[]`-during-discard restriction (#21) exists specifically to avoid shipping thousands of card
+      combinations over a network connection, which doesn't apply to an in-process function call. Getting
+      this wrong was a real bug caught by `packages/bot/test/property.test.ts` while building this (see
+      that file's comment) — `randomStrategy` isn't defensive against an empty discard list, deliberately,
+      since a non-empty one is the actual contract between the server and a `BotStrategy`.
+    - **Lobby-only for now**, matching the explicit scoping decision: `RoomManager.addBot()` only fills
+      seats while `room.state` is still null, and is rejected once a hand has started. Auto-replacing a
+      disconnected human mid-game was discussed and deliberately deferred — bigger scope (a timer, a
+      hand-off) than "fill empty seats before the game starts."
+    - **Bots never trigger `nextHand`.** `scheduleBotTurnIfAny` explicitly stops at `phase === 'handOver'`
+      — only a connected human advances past a finished hand, so nobody's hand-result screen gets yanked
+      away before they've read it.
