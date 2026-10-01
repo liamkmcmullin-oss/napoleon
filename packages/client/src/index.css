@@ -342,6 +342,18 @@ button {
   font-size: 0.7rem;
 }
 
+.table-seat__napoleon {
+  color: #e8c468;
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.trick-grid__winner {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
 .table-seat__count {
   font-size: 0.7rem;
   color: rgba(245, 245, 240, 0.7);

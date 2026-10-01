@@ -86,6 +86,26 @@ describe('heuristic bidding', () => {
   });
 });
 
+describe('heuristic angel-naming', () => {
+  it('names the Ace of Spades when it is not already in hand', () => {
+    const hand = ['2C', '3C', '4D', '5D', '6H', '7H', '2S', '3S', '4C', '5H', '6D', '7S'];
+    const state = baseState({ phase: 'angel', napoleon: 1, trump: 'H', hands: [[], hand, [], []], turn: 1 });
+    const moves = legalMoves(state, 1);
+    const view = viewFor(state, 1);
+    const move = heuristicStrategy.chooseMove(view, moves, rng) as Extract<Move, { type: 'nameAngel' }>;
+    expect(move.card).toBe('AS');
+  });
+
+  it('falls back to the next most powerful card (jack of trump) when it already holds the Ace of Spades', () => {
+    const hand = ['AS', '2C', '3C', '4D', '5D', '6H', '7H', '2S', '3S', '4C', '5H', '6D'];
+    const state = baseState({ phase: 'angel', napoleon: 1, trump: 'H', hands: [[], hand, [], []], turn: 1 });
+    const moves = legalMoves(state, 1);
+    const view = viewFor(state, 1);
+    const move = heuristicStrategy.chooseMove(view, moves, rng) as Extract<Move, { type: 'nameAngel' }>;
+    expect(move.card).toBe('JH');
+  });
+});
+
 describe('heuristic discard', () => {
   it('discards the weakest cards, keeping point cards and trump over low junk', () => {
     // 12 + widowSize(5) = 17 cards, discard exactly 5.

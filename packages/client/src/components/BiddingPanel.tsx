@@ -12,15 +12,15 @@ export function BiddingPanel(): React.JSX.Element {
 
   if (!view) return <></>;
 
-  const trumps = view.config.trumpRankLowToHigh;
-  const counts: number[] = [];
-  for (let c = view.config.minBid; c <= view.config.maxBid; c++) counts.push(c);
-
   const bidMoves = legalMoves.filter((m): m is { type: 'bid'; bid: Bid } => m.type === 'bid');
   const canPass = legalMoves.some((m) => m.type === 'pass');
 
-  const isLegal = (count: number, trump: Trump): boolean =>
-    bidMoves.some((m) => m.bid.count === count && m.bid.trump === trump);
+  // Group only the legal bids by count, in ascending order — rather than
+  // a full count x trump grid with most cells disabled, this renders
+  // just the options actually available right now.
+  const counts = [...new Set(bidMoves.map((m) => m.bid.count))].sort((a, b) => a - b);
+  const trumpsForCount = (count: number): Trump[] =>
+    view.config.trumpRankLowToHigh.filter((trump) => bidMoves.some((m) => m.bid.count === count && m.bid.trump === trump));
 
   const handleBid = (count: number, trump: Trump): void => {
     sendMove({ type: 'bid', bid: { count, trump } });
@@ -54,42 +54,23 @@ export function BiddingPanel(): React.JSX.Element {
         </div>
       )}
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr>
-              <th style={{ padding: '2px 6px', fontSize: '0.75rem', textAlign: 'left' }}></th>
-              {trumps.map((trump) => (
-                <th key={trump} style={{ padding: '2px 6px', fontSize: '0.75rem', textAlign: 'center' }}>
-                  {TRUMP_SYMBOL[trump]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {counts.map((count) => (
-              <tr key={count}>
-                <td style={{ padding: '2px 6px', fontSize: '0.8rem', fontWeight: 600 }}>{count}</td>
-                {trumps.map((trump) => {
-                  const legal = isLegal(count, trump);
-                  return (
-                    <td key={trump} style={{ padding: '2px' }}>
-                      <button
-                        type="button"
-                        className="btn btn--small"
-                        disabled={!legal}
-                        onClick={() => handleBid(count, trump)}
-                        style={{ minWidth: '44px', padding: '4px 6px' }}
-                      >
-                        {TRUMP_SYMBOL[trump]}
-                      </button>
-                    </td>
-                  );
-                })}
-              </tr>
+      <div className="stack" style={{ gap: 'var(--space-1)' }}>
+        {counts.map((count) => (
+          <div key={count} className="row" style={{ gap: 'var(--space-1)', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, minWidth: '1.5em' }}>{count}</span>
+            {trumpsForCount(count).map((trump) => (
+              <button
+                key={trump}
+                type="button"
+                className="btn btn--small"
+                onClick={() => handleBid(count, trump)}
+                style={{ minWidth: '44px', padding: '4px 6px' }}
+              >
+                {TRUMP_SYMBOL[trump]}
+              </button>
             ))}
-          </tbody>
-        </table>
+          </div>
+        ))}
       </div>
 
       <div className="row" style={{ justifyContent: 'space-between' }}>

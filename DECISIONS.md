@@ -226,10 +226,10 @@ inconsistent.
       forced by the no-all-pass rule; strength maps onto a bid count via `packages/bot/src/heuristic/
       bidding.ts`'s calibration), discards the weakest cards first, and plays via a no-lookahead "take it
       cheaply if you can, hold back an expensive card unless you're last to act" rule
-      (`heuristic/play.ts`). Angel-naming stays a random pick among the 53 cards — see the comment atop
-      `heuristic/index.ts` for why that one phase wasn't worth a heuristic. `randomStrategy` (uniform
-      random legal move, relocated from `packages/cli`) is kept in the registry mainly as the stress-test
-      baseline it always was.
+      (`heuristic/play.ts`), and names the most powerful card not already in hand as the angel
+      (`heuristic/angel.ts` — see #34, this was originally a random pick and got upgraded).
+      `randomStrategy` (uniform random legal move, relocated from `packages/cli`) is kept in the registry
+      mainly as the stress-test baseline it always was.
     - **Bots get the engine's true `legalMoves`, not the wire-trimmed version a real client receives** —
       the `[]`-during-discard restriction (#21) exists specifically to avoid shipping thousands of card
       combinations over a network connection, which doesn't apply to an in-process function call. Getting
@@ -243,3 +243,24 @@ inconsistent.
     - **Bots never trigger `nextHand`.** `scheduleBotTurnIfAny` explicitly stops at `phase === 'handOver'`
       — only a connected human advances past a finished hand, so nobody's hand-result screen gets yanked
       away before they've read it.
+
+34. **Bot bidding recalibration, and a real angel-naming heuristic.** Playtesting surfaced two problems
+    with #33's first cut: bots bid the maximum (20) almost every hand, and named the angel uniformly at
+    random (sometimes an obviously bad card).
+    - **Bidding was miscalibrated, not just "too aggressive."** `estimateHandStrength` takes the *best*
+      of 5 candidate trumps for a hand — an order statistic that runs well above per-card intuition.
+      A script sampling 20,000 random 12-card hands found the *median* hand already scores ~14 under its
+      best trump, with the 99th percentile around 24. The old constants (`WORTH_BIDDING_THRESHOLD = 4`,
+      `STRENGTH_TO_COUNT_SCALE = 0.5`) treated 4 as "barely worth bidding," so nearly every hand cleared
+      the bar and climbed toward the max count. Recalibrated against that same distribution:
+      `WORTH_BIDDING_THRESHOLD = 13` (~median — roughly half of random hands now pass outright) and
+      `STRENGTH_TO_COUNT_SCALE = 0.7` (the 99th-percentile hand now reaches the max bid of 20, not the
+      typical one). Re-running the same sampling script against the new constants gives a believable
+      spread: ~41% pass, and the rest spread across 12–20 with sharply decreasing frequency toward 20.
+    - **Angel-naming now picks the most powerful card not already in hand** (`heuristic/angel.ts`),
+      using a dedicated power ranking that mirrors `resolveTrick.ts`'s actual precedence (Ace of Spades
+      always wins > jack of trump > sister jack > Joker, situational since it only wins if led > rest of
+      trump by rank > plain naturals by rank) — deliberately a different scale from `strength.ts`'s
+      bidding-tuned `cardStrength`, which exists to rank cards for hand-strength purposes, not to mirror
+      true trick-winning precedence. "Not already in hand" is the only information a bot (or a human)
+      actually has — nobody can see who holds what, by design (#2's hidden information rule).

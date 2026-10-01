@@ -1,6 +1,26 @@
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { PlayerView, Seat } from '@napoleon/engine';
+import type { CardId, PlayerView, Seat, TrickPlay } from '@napoleon/engine';
 import { Card } from './Card.js';
+
+// A finished trick stays on the table for at least this long — and
+// longer still if nobody has led the next trick yet — so it doesn't
+// vanish before players have registered what was just played.
+const TRICK_HOLD_MS = 3000;
+
+interface HeldTrick {
+  trick: TrickPlay[];
+  trickNumber: number;
+  winnerSeat: Seat | null;
+  until: number;
+}
+
+function findTrickWinner(prevCaptured: CardId[][], nextCaptured: CardId[][]): Seat | null {
+  for (let seat = 0; seat < nextCaptured.length; seat++) {
+    if ((nextCaptured[seat]?.length ?? 0) > (prevCaptured[seat]?.length ?? 0)) return seat;
+  }
+  return null;
+}
 
 /**
  * Where each other seat sits relative to the viewer, going clockwise
@@ -44,6 +64,36 @@ function opponentFan(count: number) {
 
 export function Table({ view, names }: { view: PlayerView; names: (string | null)[] }): React.JSX.Element {
   const others = seatPositions(view.players, view.seat);
+  const prevViewRef = useRef(view);
+  const [held, setHeld] = useState<HeldTrick | null>(null);
+
+  useEffect(() => {
+    const prev = prevViewRef.current;
+    prevViewRef.current = view;
+    if (prev.trick.length > 0 && view.trick.length === 0 && prev.trickNumber !== view.trickNumber) {
+      setHeld({
+        trick: prev.trick,
+        trickNumber: prev.trickNumber,
+        winnerSeat: findTrickWinner(prev.captured, view.captured),
+        until: Date.now() + TRICK_HOLD_MS,
+      });
+    }
+  }, [view]);
+
+  useEffect(() => {
+    if (!held) return;
+    const remaining = held.until - Date.now();
+    if (remaining <= 0) {
+      setHeld(null);
+      return;
+    }
+    const timer = setTimeout(() => setHeld(null), remaining);
+    return () => clearTimeout(timer);
+  }, [held]);
+
+  const showingHeld = held !== null;
+  const trickToShow = showingHeld ? held.trick : view.trick;
+  const trickNumberToShow = showingHeld ? held.trickNumber : view.trickNumber;
 
   return (
     <div className="stack">
@@ -60,6 +110,7 @@ export function Table({ view, names }: { view: PlayerView; names: (string | null
               <span className="table-seat__name">
                 {seatLabel(seat, names)}
                 {seat === view.dealer && <span className="table-seat__dealer"> · DEALER</span>}
+                {seat === view.napoleon && <span className="table-seat__napoleon"> · NAPOLEON</span>}
               </span>
               <span className="table-seat__count">{count} cards</span>
             </div>
@@ -67,13 +118,16 @@ export function Table({ view, names }: { view: PlayerView; names: (string | null
         })}
 
         <div className="trick-grid">
-          {view.trick.map((play) => (
+          {trickToShow.map((play) => (
             <div className="trick-slot" key={play.seat}>
               <Card card={play.card} small />
               <span>{seatLabel(play.seat, names)}</span>
             </div>
           ))}
-          {view.trick.length === 0 && <span className="pill">Trick {view.trickNumber} of {view.config.handSize}</span>}
+          {trickToShow.length === 0 && <span className="pill">Trick {trickNumberToShow} of {view.config.handSize}</span>}
+          {showingHeld && held.winnerSeat !== null && (
+            <span className="trick-grid__winner">Trick won by {seatLabel(held.winnerSeat, names)}</span>
+          )}
         </div>
       </div>
 

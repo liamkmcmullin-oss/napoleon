@@ -3,13 +3,16 @@ import { estimateHandStrength } from './strength.js';
 
 type BidMove = Extract<Move, { type: 'bid' }>;
 
-// Tuned by feel against the strength scale in strength.ts, not derived
-// analytically — see packages/bot/test for the behavior this produces.
-// A hand right at the threshold targets the minimum bid; strength climbs
-// roughly 2 points per extra bid count after that, so it takes a genuinely
-// strong hand (several aces/trump honors) to push toward the maximum.
-const WORTH_BIDDING_THRESHOLD = 4;
-const STRENGTH_TO_COUNT_SCALE = 0.5;
+// Calibrated against the actual distribution of estimateHandStrength()
+// over random hands (see the simulation referenced in DECISIONS.md),
+// not derived analytically. estimateHandStrength takes the best of
+// several candidate trumps, which biases it well above what a "per-card
+// average" intuition would suggest — e.g. for a 12-card hand the
+// *median* random hand already scores ~14, and the top 1% scores ~24.
+// Below the threshold, pass; a hand right at the threshold bids the
+// minimum, and it takes a top-1%-ish hand to reach the maximum.
+const WORTH_BIDDING_THRESHOLD = 13;
+const STRENGTH_TO_COUNT_SCALE = 0.7;
 
 function cheapestBid(moves: BidMove[], view: PlayerView): BidMove {
   const trumpIndex = (t: Trump) => view.config.trumpRankLowToHigh.indexOf(t);
