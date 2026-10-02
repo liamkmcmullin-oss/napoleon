@@ -248,12 +248,14 @@ function applyPlay(state: GameState, seat: Seat, card: CardId, calledSuit?: Suit
     i === winner ? [...pile, ...newTrick.map((p) => p.card)] : pile,
   );
 
+  const tricks = [...state.tricks, { plays: newTrick, winner }];
   const totalTricks = state.config.handSize;
   if (state.trickNumber >= totalTricks) {
     const preScoreState: GameState = {
       ...state,
       hands: newHands,
       captured: newCaptured,
+      tricks,
       angelRevealed,
     };
     const result = scoreHand(preScoreState);
@@ -273,6 +275,7 @@ function applyPlay(state: GameState, seat: Seat, card: CardId, calledSuit?: Suit
     hands: newHands,
     trick: [],
     trickNumber: state.trickNumber + 1,
+    tricks,
     captured: newCaptured,
     angelRevealed,
     turn: winner,

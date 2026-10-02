@@ -6,11 +6,13 @@
   "scripts": {
     "play": "tsx src/play.ts",
     "simulate": "tsx src/simulate.ts",
+    "arena": "tsx src/arena.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
     "test": "echo \"(no unit tests in cli; see simulate.ts)\""
   },
   "dependencies": {
+    "@napoleon/bot": "workspace:*",
     "@napoleon/engine": "workspace:*"
   },
   "devDependencies": {

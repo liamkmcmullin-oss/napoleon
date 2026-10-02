@@ -197,6 +197,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@napoleon/bot':
+        specifier: workspace:*
+        version: link:../bot
       '@napoleon/engine':
         specifier: workspace:*
         version: link:../engine

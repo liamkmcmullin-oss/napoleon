@@ -7,7 +7,7 @@ import type { CardId, Move, PlayerView } from '@napoleon/engine';
 // Ace of Spades always wins outright, then the jack of trump and its
 // sister jack, then the Joker (powerful but only when led), then the
 // rest of trump by rank, then plain naturals by rank.
-function cardPower(card: CardId, trump: PlayerView['trump']): number {
+export function cardPower(card: CardId, trump: PlayerView['trump']): number {
   if (card === 'AS') return 1000;
   if (trump && trump !== 'NT' && isTrump(card, trump, false)) {
     const rank = trumpRank(card, trump);

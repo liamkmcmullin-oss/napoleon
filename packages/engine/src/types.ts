@@ -55,6 +55,12 @@ export interface BidRecord {
   bid: Bid | null;
 }
 
+/** A finished trick: who played what (in play order, starting with the leader) and who took it. */
+export interface CompletedTrick {
+  plays: TrickPlay[];
+  winner: Seat;
+}
+
 export interface HandResult {
   napoleonWon: boolean;
   points: number;
@@ -82,6 +88,8 @@ export interface GameState {
   angelRevealed: boolean;
   discards: CardId[];
   trick: TrickPlay[];
+  /** Every completed trick this hand, in order. Public information. */
+  tricks: CompletedTrick[];
   trickNumber: number;
   captured: CardId[][];
   scores: number[];
@@ -110,7 +118,11 @@ export interface PlayerView {
   angelRevealed: boolean;
   discardCount: number;
   discards: CardId[] | null;
+  /** The viewer's own discards — non-empty only for Napoleon, who knows what they threw away. */
+  ownDiscards: CardId[];
   trick: TrickPlay[];
+  /** Every completed trick this hand, in order. */
+  tricks: CompletedTrick[];
   trickNumber: number;
   captured: CardId[][];
   scores: number[];

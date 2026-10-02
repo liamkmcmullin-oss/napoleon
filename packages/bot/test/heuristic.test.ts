@@ -33,6 +33,7 @@ function baseState(overrides: Partial<GameState>): GameState {
     captured: empty.map((h) => [...h]),
     scores: Array.from({ length: players }, () => 0),
     handResult: null,
+    tricks: [],
     seed: 1,
     ...overrides,
   };

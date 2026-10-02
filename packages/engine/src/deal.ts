@@ -35,6 +35,7 @@ export function createHand(config: Config, seed: number, dealer: Seat, scores?: 
     angelRevealed: false,
     discards: [],
     trick: [],
+    tricks: [],
     trickNumber: 1,
     captured: Array.from({ length: config.players }, () => []),
     scores: scores ? [...scores] : Array.from({ length: config.players }, () => 0),
