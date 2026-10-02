@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import type { CardId } from '@napoleon/engine';
+import { isTrump, trumpRank } from '@napoleon/engine';
+import type { CardId, Trump } from '@napoleon/engine';
 
 const SUIT_SYMBOL: Record<string, string> = { C: '♣', D: '♦', H: '♥', S: '♠' };
 const RANK_DISPLAY: Record<string, string> = { T: '10' };
@@ -22,14 +23,26 @@ const RANK_ORDER: Record<string, number> = Object.fromEntries(
   ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'].map((r, i) => [r, i]),
 );
 
-/** Sorts by suit (clubs, diamonds, hearts, spades), then rank low to high, with the Joker last. */
-export function sortForDisplay(cards: CardId[]): CardId[] {
+/**
+ * Sorts by suit (clubs, diamonds, hearts, spades), then rank low to high,
+ * with the Joker last. Once a trump is set, the sister jack (the other
+ * suit's jack, which counts as a trump card during play) is grouped with
+ * the rest of the trump suit instead of its printed suit — it's a trump
+ * card on the table, so it should look like one in hand — and ranked by
+ * its actual trump power (jack of trump highest, sister jack just below).
+ */
+export function sortForDisplay(cards: CardId[], trump: Trump | null = null): CardId[] {
+  const trumpActive = trump !== null && trump !== 'NT';
+  const isCardTrump = (card: CardId): boolean => trumpActive && isTrump(card, trump as Trump, false);
+  const groupSuit = (card: CardId): string => (isCardTrump(card) ? (trump as string) : card.slice(-1));
+  const rankKey = (card: CardId): number => (isCardTrump(card) ? trumpRank(card, trump as Trump) : RANK_ORDER[card.slice(0, -1)]!);
+
   return [...cards].sort((a, b) => {
     if (a === 'JOKER') return 1;
     if (b === 'JOKER') return -1;
-    const suitCmp = SUIT_ORDER[a.slice(-1)]! - SUIT_ORDER[b.slice(-1)]!;
+    const suitCmp = SUIT_ORDER[groupSuit(a)]! - SUIT_ORDER[groupSuit(b)]!;
     if (suitCmp !== 0) return suitCmp;
-    return RANK_ORDER[a.slice(0, -1)]! - RANK_ORDER[b.slice(0, -1)]!;
+    return rankKey(a) - rankKey(b);
   });
 }
 

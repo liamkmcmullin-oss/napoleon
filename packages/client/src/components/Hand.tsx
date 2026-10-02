@@ -63,7 +63,7 @@ export function Hand({ view }: { view: PlayerView }): React.JSX.Element {
     setCallingSuitFor(null);
   };
 
-  const sortedHand = sortForDisplay(view.hand);
+  const sortedHand = sortForDisplay(view.hand, view.trump);
 
   return (
     <div className="panel">
