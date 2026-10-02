@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { applyMove, createHand, defaultConfig, legalMoves, makeDeck, mulberry32, viewFor } from '@napoleon/engine';
 import type { GameState } from '@napoleon/engine';
 import { createMcStrategy, heuristicStrategy } from '../src/index.js';
-import { inferExclusions, samplePlayState, unseenCards } from '../src/mc/sample.js';
+import { estimateHandStrength } from '../src/heuristic/index.js';
+import { inferExclusions, sampleDeals, samplePlayState, unseenCards } from '../src/mc/sample.js';
 
 /** Plays the heuristic until `stop` says so, returning that state. */
 function advance(players: 4 | 5, seed: number, stop: (s: GameState) => boolean): GameState {
@@ -79,5 +80,30 @@ describe('mc strategy', () => {
         if (res.ok) state = res.state;
       }
     }
+  });
+});
+
+describe('auction inference', () => {
+  it('makes early passers look weaker and bidders look stronger than a uniform deal', () => {
+    // Seat 1 bids 16S; seats 2 and 3 pass; seat 0 (dealer) is the viewer, about to name the angel.
+    let state = createHand(defaultConfig(4), 11, 0);
+    const steps = [
+      { seat: 1, move: { type: 'bid', bid: { count: 16, trump: 'S' } } },
+      { seat: 2, move: { type: 'pass' } },
+      { seat: 3, move: { type: 'pass' } },
+      { seat: 0, move: { type: 'pass' } },
+    ] as const;
+    for (const { seat, move } of steps) {
+      const res = applyMove(state, seat, move);
+      if (!res.ok) throw new Error(res.error);
+      state = res.state;
+    }
+    const view = viewFor(state, 0);
+    const meanStrength = (auction: boolean, seat: number) => {
+      const deals = sampleDeals(view, 300, mulberry32(5), { auction });
+      return deals.reduce((sum, d) => sum + estimateHandStrength(d.hands[seat]!, 'S'), 0) / deals.length;
+    };
+    expect(meanStrength(true, 1)).toBeGreaterThan(meanStrength(false, 1) + 1);
+    expect(meanStrength(true, 2)).toBeLessThan(meanStrength(false, 2) - 0.5);
   });
 });

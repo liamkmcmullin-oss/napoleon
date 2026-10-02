@@ -19,6 +19,7 @@ export const BOT_STRATEGIES: Record<string, BotStrategy> = {
   random: randomStrategy,
   heuristic: heuristicStrategy,
   mc: createMcStrategy(),
+  'mc-auction': createMcStrategy({ name: 'mc-auction', auctionInference: true }),
   'mc-play': createMcStrategy({ name: 'mc-play', mcBidding: false, mcAngel: false }),
 };
 

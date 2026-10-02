@@ -1,6 +1,20 @@
-import { BOT_STRATEGIES, formatArenaResult, runArena } from '@napoleon/bot';
+import { BOT_STRATEGIES, createMcStrategy, formatArenaResult, runArena } from '@napoleon/bot';
+import type { BotStrategy, McOptions } from '@napoleon/bot';
 
-// Usage: pnpm --filter @napoleon/cli arena <challenger> <baseline> [--players 4|5] [--deals N] [--challengers K] [--seed S]
+/** `heuristic`, `mc`, or `mc:passValue=5,playSamples=60,auctionInference=false` (an MC bot with options). */
+function resolveStrategy(spec: string): BotStrategy | undefined {
+  const [base, optionText] = spec.split(':');
+  if (optionText === undefined) return BOT_STRATEGIES[spec];
+  if (base !== 'mc') return undefined;
+  const options: Record<string, number | boolean> = {};
+  for (const pair of optionText.split(',')) {
+    const [key, value] = pair.split('=');
+    options[key!] = value === 'true' ? true : value === 'false' ? false : Number(value);
+  }
+  return createMcStrategy({ ...(options as McOptions), name: spec });
+}
+
+// Usage: pnpm --filter @napoleon/cli arena <challenger> <baseline> (either may be mc:key=value,...) [--players 4|5] [--deals N] [--challengers K] [--seed S]
 function main(): void {
   const args = process.argv.slice(2);
   const positional: string[] = [];
@@ -10,8 +24,8 @@ function main(): void {
     else positional.push(args[i]!);
   }
   const [aName = 'heuristic', bName = 'random'] = positional;
-  const a = BOT_STRATEGIES[aName];
-  const b = BOT_STRATEGIES[bName];
+  const a = resolveStrategy(aName);
+  const b = resolveStrategy(bName);
   if (!a || !b) {
     console.error(`unknown strategy. available: ${Object.keys(BOT_STRATEGIES).join(', ')}`);
     process.exit(2);

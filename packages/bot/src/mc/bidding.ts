@@ -2,11 +2,12 @@ import { computeBaseScore, legalMoves as engineLegalMoves, pointCardCount, viewF
 import type { Bid, GameState, Move, PlayerView, Trump } from '@napoleon/engine';
 import { chooseAngel } from '../heuristic/angel.js';
 import { playOutFromAngel } from './rollout.js';
-import { angelPhaseState, sampleDeal } from './sample.js';
+import { angelPhaseState, sampleDeals } from './sample.js';
+import type { SampleOptions } from './sample.js';
 
 type BidMove = Extract<Move, { type: 'bid' }>;
 
-export interface McBidOptions {
+export interface McBidOptions extends SampleOptions {
   samples: number;
   /** Expected score we assume for passing; bid only if the best bid beats it. */
   passValue: number;
@@ -41,8 +42,7 @@ export function chooseMcBid(view: PlayerView, legalMoves: Move[], rng: () => num
   const evSum = new Map<string, number>();
   const key = (b: Bid) => `${b.count}${b.trump}`;
 
-  for (let i = 0; i < opts.samples; i++) {
-    const sample = sampleDeal(view, rng);
+  for (const sample of sampleDeals(view, opts.samples, rng, opts)) {
     for (const trump of trumps) {
       const start = angelPhaseState(view, sample, trump, { count: view.config.minBid, trump });
       const angel = chooseAngel(viewFor(start, view.seat), engineLegalMoves(start, view.seat));

@@ -2,13 +2,13 @@ import { applyMove } from '@napoleon/engine';
 import type { Move, PlayerView } from '@napoleon/engine';
 import { choosePlay as heuristicPlay } from '../heuristic/play.js';
 import { playOut } from './rollout.js';
-import { inferExclusions, samplePlayState } from './sample.js';
+import { inferExclusions, samplePlayStates } from './sample.js';
+import type { SampleOptions } from './sample.js';
 
 type PlayMove = Extract<Move, { type: 'play' }>;
 
-export interface McPlayOptions {
+export interface McPlayOptions extends SampleOptions {
   samples: number;
-  soloPrior?: number | undefined;
 }
 
 /**
@@ -25,8 +25,7 @@ export function chooseMcPlay(view: PlayerView, legalMoves: Move[], rng: () => nu
   const excluded = inferExclusions(view);
   const totals = new Array<number>(candidates.length).fill(0);
 
-  for (let i = 0; i < opts.samples; i++) {
-    const sampled = samplePlayState(view, excluded, rng, opts.soloPrior);
+  for (const sampled of samplePlayStates(view, excluded, opts.samples, rng, opts)) {
     candidates.forEach((move, c) => {
       const res = applyMove(sampled, view.seat, move);
       if (!res.ok) throw new Error(`chooseMcPlay: sampled state rejected a legal move: ${res.error}`);

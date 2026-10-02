@@ -1,5 +1,6 @@
 import { JOKER, effectiveSuit, makeDeck, requiredSuit, shuffle } from '@napoleon/engine';
 import type { CardId, GameState, PlayerView, Seat, TrickPlay } from '@napoleon/engine';
+import { auctionLogLikelihood, auctionSignals, resample } from './auction.js';
 
 /**
  * Per seat, the cards that seat provably cannot hold, from how they
@@ -203,4 +204,71 @@ export function angelPhaseState(
     trick: [],
     trickNumber: 1,
   };
+}
+
+export interface SampleOptions {
+  /** Weight samples by how plausible the auction makes each hand. */
+  auction?: boolean;
+  /** Proposals drawn per sample kept, when weighting by the auction. */
+  oversample?: number;
+  soloPrior?: number | undefined;
+}
+
+const DEFAULT_OVERSAMPLE = 6;
+
+function cardsPlayedBy(view: PlayerView, seat: Seat): CardId[] {
+  const out: CardId[] = [];
+  for (const t of view.tricks) for (const p of t.plays) if (p.seat === seat) out.push(p.card);
+  for (const p of view.trick) if (p.seat === seat) out.push(p.card);
+  return out;
+}
+
+/** Draws `n` items from `propose`, importance-weighted by the auction when it carries any signal. */
+function weighted<T>(
+  view: PlayerView,
+  n: number,
+  rng: () => number,
+  opts: SampleOptions,
+  propose: () => T,
+  biddingHands: (item: T) => CardId[][],
+): T[] {
+  const signals = opts.auction === false ? [] : auctionSignals(view).map((s, seat) => (seat === view.seat ? null : s));
+  if (!signals.some((s) => s !== null)) return Array.from({ length: n }, propose);
+
+  const count = n * (opts.oversample ?? DEFAULT_OVERSAMPLE);
+  const items = Array.from({ length: count }, propose);
+  const logWeights = items.map((item) => {
+    const hands = biddingHands(item);
+    let lw = 0;
+    signals.forEach((signal, seat) => {
+      if (signal) lw += auctionLogLikelihood(signal, hands[seat]!, view.config);
+    });
+    return lw;
+  });
+  return resample(items, logWeights, n, rng);
+}
+
+/** `n` play-phase states, weighted by the auction (see samplePlayState). */
+export function samplePlayStates(view: PlayerView, excluded: Set<CardId>[], n: number, rng: () => number, opts: SampleOptions = {}): GameState[] {
+  return weighted(
+    view,
+    n,
+    rng,
+    opts,
+    () => samplePlayState(view, excluded, rng, opts.soloPrior),
+    // Bidding-time hand = what they hold now plus what they've already played.
+    (state) => state.hands.map((h, seat) => [...h, ...cardsPlayedBy(view, seat)]),
+  );
+}
+
+/** `n` samples of the widow and other hands for a Napoleon who hasn't picked the widow up, weighted by the auction. */
+export function sampleDeals(view: PlayerView, n: number, rng: () => number, opts: SampleOptions = {}): { widow: CardId[]; hands: CardId[][] }[] {
+  return weighted(
+    view,
+    n,
+    rng,
+    opts,
+    () => sampleDeal(view, rng),
+    (deal) => deal.hands,
+  );
 }

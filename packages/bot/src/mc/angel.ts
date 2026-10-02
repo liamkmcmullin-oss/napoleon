@@ -2,9 +2,10 @@ import { makeDeck } from '@napoleon/engine';
 import type { CardId, Move, PlayerView } from '@napoleon/engine';
 import { cardPower, chooseAngel as heuristicAngel } from '../heuristic/angel.js';
 import { playOutFromAngel } from './rollout.js';
-import { angelPhaseState, sampleDeal } from './sample.js';
+import { angelPhaseState, sampleDeals } from './sample.js';
+import type { SampleOptions } from './sample.js';
 
-export interface McAngelOptions {
+export interface McAngelOptions extends SampleOptions {
   samples: number;
   /** How many of the most powerful unheld cards to evaluate. */
   candidates: number;
@@ -24,8 +25,7 @@ export function chooseMcAngel(view: PlayerView, legalMoves: Move[], rng: () => n
   if (pool.length === 0) return heuristicAngel(view, legalMoves);
 
   const totals = new Array<number>(pool.length).fill(0);
-  for (let i = 0; i < opts.samples; i++) {
-    const sample = sampleDeal(view, rng);
+  for (const sample of sampleDeals(view, opts.samples, rng, opts)) {
     const start = angelPhaseState(view, sample, view.trump, view.currentBid);
     pool.forEach((card, c) => {
       totals[c]! += playOutFromAngel(start, card).handResult!.deltas[view.seat]!;

@@ -11,8 +11,8 @@ type BidMove = Extract<Move, { type: 'bid' }>;
 // *median* random hand already scores ~14, and the top 1% scores ~24.
 // Below the threshold, pass; a hand right at the threshold bids the
 // minimum, and it takes a top-1%-ish hand to reach the maximum.
-const WORTH_BIDDING_THRESHOLD = 13;
-const STRENGTH_TO_COUNT_SCALE = 0.7;
+export const WORTH_BIDDING_THRESHOLD = 13;
+export const STRENGTH_TO_COUNT_SCALE = 0.7;
 
 function cheapestBid(moves: BidMove[], view: PlayerView): BidMove {
   const trumpIndex = (t: Trump) => view.config.trumpRankLowToHigh.indexOf(t);
