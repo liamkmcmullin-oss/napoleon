@@ -118,7 +118,7 @@ export interface PlayerView {
   angelRevealed: boolean;
   discardCount: number;
   discards: CardId[] | null;
-  /** The viewer's own discards — non-empty only for Napoleon, who knows what they threw away. */
+  /** The viewer's own discards â€” non-empty only for Napoleon, who knows what they threw away. */
   ownDiscards: CardId[];
   trick: TrickPlay[];
   /** Every completed trick this hand, in order. */
